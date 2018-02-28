@@ -23,24 +23,27 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
 
     @Override
     public int[] findMaxCostMatching(int[][] costMatrix) {
+        System.out.println("Solving problem for size: "+costMatrix.length);
         final int n = costMatrix.length;
         final double[] prices = getFilledDoubleArray(n, INITIAL_PRICE);
 
         int[] assignment = null;
         for (double epsilon = 1.0; epsilon > 1.0 / n; epsilon *= .25) {
             assignment = relaxationPhase(costMatrix, prices, epsilon);
+            System.out.println("Assignment: "+Arrays.toString(assignment));
         }
         return assignment;
     }
 
     private int[] relaxationPhase(int[][] costMatrix, double[] prices, double epsilon) {
+        System.out.println("Prices at the beginning of phase: "+Arrays.toString(prices));
         final int n = costMatrix.length;
-        List<Integer> nonAssigned = getListOfRange(n);
-
+        List<Integer> nonAssignedList = getListOfRange(n);
         final int[] assignment = getFilledIntArray(n, UNASSIGNED_VALUE);
-        while (arrayContains(assignment, UNASSIGNED_VALUE)) {
-            auctionRound(assignment, nonAssigned, prices, costMatrix, epsilon);
+        while (!nonAssignedList.isEmpty()) {
+            auctionRound(assignment, nonAssignedList, prices, costMatrix, epsilon);
         }
+        System.out.println("Prices at the end       of phase: "+Arrays.toString(prices));
         return assignment;
     }
 
@@ -56,6 +59,7 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
         final Set<Bid> bidSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
         final List<Runnable> taskList = new ArrayList<>(taskAmount);
 
+        System.out.println("Non assigned at the beginning of round: "+nonAssignedList);
         /* Bidding phase */
         for (int i : nonAssignedList) {
             Runnable findBidTask = () -> {
@@ -85,6 +89,7 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
             };
             taskList.add(findBidTask);
         }
+
         ExecutorService executorService = Executors.newFixedThreadPool(threadAmount);
         List<Future> futureList = new LinkedList<>();
         for (Runnable runnable : taskList) {
@@ -93,54 +98,57 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
         for (Future future : futureList) {
             try {
                 future.get();
-            } catch (InterruptedException e) {
-                throw new IllegalStateException(e);
-            } catch (ExecutionException e) {
+            } catch (InterruptedException | ExecutionException e) {
                 throw new IllegalStateException(e);
             }
         }
         executorService.shutdown();
 
-        Map<Integer, Bid> bidMap = new HashMap<>();
-        for (Bid bid : bidSet) {
-            int objectIndex = bid.getObjectIndex();
-            Bid oldBid = bidMap.get(objectIndex);
-            if (oldBid == null || bid.compareTo(oldBid) > 0) {
-                bidMap.put(objectIndex, bid);
-            }
+        /* Processing bids */
+        Map<Integer, Queue<Bid>> bidMap = new HashMap<>();
+        for(int i = 0; i < n; i++){
+            bidMap.put(i, new PriorityQueue<>(Collections.reverseOrder()));
         }
+        for (Bid bid : bidSet) {
+            final int objectIndex = bid.getObjectIndex();
+            final Queue<Bid> bidQueue = bidMap.get(objectIndex);
+            bidQueue.add(bid);
+        }
+
+        nonAssignedList.clear();
 
         /* Assignment phase*/
         for (int j = 0; j < n; j++) {
-//            List<Integer> bidderIndexList = getIndicesWithValue(tempBidded, j);
-            Bid highestBid = bidMap.get(j);
-            if (highestBid != null) {
-                double highestBidValue = highestBid.getBidValue();
-                int highestBidderIndex = highestBid.getBidderIndex();
+            final Queue<Bid> bidQueue = bidMap.get(j);
+            if(bidQueue.isEmpty()){
+                continue;
+            }
 
-			    /* Find the other person who has object j and make them unassigned */
-                for (int i = 0; i < assignment.length; i++) {
-                    if (assignment[i] == j) {
-                        nonAssignedList.add(i);
-                        assignment[i] = UNASSIGNED_VALUE;
-//                        System.out.println("Bidder "+i+" lost object "+j);
-                        break;
-                    }
-                }
+            final Bid highestBid = bidQueue.remove();
+            final int highestBidderIndex = highestBid.getBidderIndex();
+            assignment[highestBidderIndex] = j;
+            final double highestBidValue = highestBid.getBidValue();
+            prices[j] += highestBidValue;
 
-                assignment[highestBidderIndex] = j;
-                nonAssignedList.remove(Integer.valueOf(highestBidderIndex));
-                prices[j] += highestBidValue;
+            for(Bid failedBid : bidQueue){
+                nonAssignedList.add(failedBid.getBidderIndex());
             }
         }
+
+        Set<Integer> nonAssignedSet = new HashSet<>(nonAssignedList);
+        if(nonAssignedSet.size() != nonAssignedList.size()){
+            throw new IllegalStateException("List contains duplicates");
+        }
+
+        System.out.println("Non assigned at the end: "+nonAssignedList);
     }
 
     private static List<Integer> getListOfRange(int toExclusive) {
-        List<Integer> nonAssigned = new LinkedList<>();
+        List<Integer> rangeList = new LinkedList<>();
         for (int i = 0; i < toExclusive; i++) {
-            nonAssigned.add(i);
+            rangeList.add(i);
         }
-        return nonAssigned;
+        return rangeList;
     }
 
     private static int[] getFilledIntArray(int n, int value) {
