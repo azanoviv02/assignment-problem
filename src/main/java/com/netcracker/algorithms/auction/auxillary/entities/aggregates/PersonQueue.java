@@ -5,6 +5,7 @@ import com.netcracker.algorithms.auction.auxillary.entities.basic.Person;
 import java.util.ArrayDeque;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Set;
 import java.util.Spliterator;
@@ -13,8 +14,12 @@ import java.util.stream.Stream;
 
 public class PersonQueue implements Iterable<Person> {
 
-    public static final PersonQueue createInitialPersonQueue(int n) {
+    public static PersonQueue createFullPersonQueue(int n) {
         return new PersonQueue(getQueueOfRange(n));
+    }
+
+    public static PersonQueue createEmptyPersonQueue() {
+        return new PersonQueue(new LinkedList());
     }
 
 
@@ -28,6 +33,10 @@ public class PersonQueue implements Iterable<Person> {
         return personQueue.add(person);
     }
 
+    public boolean addAll(PersonQueue anotherPersonQueue) {
+        return personQueue.addAll(anotherPersonQueue.personQueue);
+    }
+
     public Person remove() {
         return personQueue.remove();
     }
@@ -38,10 +47,6 @@ public class PersonQueue implements Iterable<Person> {
 
     public int size() {
         return personQueue.size();
-    }
-
-    public void clear() {
-        personQueue.clear();
     }
 
     public boolean containsDuplicates() {

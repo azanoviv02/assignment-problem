@@ -51,4 +51,13 @@ public class Bid implements Comparable<Bid> {
         result = 31 * result + (int) (temp ^ (temp >>> 32));
         return result;
     }
+
+    @Override
+    public String toString() {
+        return "Bid{" +
+                "person=" + person +
+                ", item=" + item +
+                ", bidValue=" + bidValue +
+                '}';
+    }
 }

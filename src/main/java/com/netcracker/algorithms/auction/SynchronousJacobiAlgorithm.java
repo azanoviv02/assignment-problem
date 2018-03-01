@@ -4,39 +4,38 @@ import com.netcracker.algorithms.AssignmentProblemSolver;
 import com.netcracker.algorithms.auction.auxillary.entities.aggregates.Assignment;
 import com.netcracker.algorithms.auction.auxillary.entities.aggregates.BenefitMatrix;
 import com.netcracker.algorithms.auction.auxillary.entities.aggregates.ItemList;
-import com.netcracker.algorithms.auction.auxillary.entities.basic.Bid;
 import com.netcracker.algorithms.auction.auxillary.entities.aggregates.PersonQueue;
 import com.netcracker.algorithms.auction.auxillary.entities.aggregates.PriceVector;
-import com.netcracker.algorithms.auction.auxillary.entities.results.RelaxationPhaseResult;
+import com.netcracker.algorithms.auction.auxillary.entities.basic.Bid;
 import com.netcracker.algorithms.auction.auxillary.entities.basic.Item;
-import com.netcracker.algorithms.auction.auxillary.entities.basic.Person;
-import com.netcracker.algorithms.auction.auxillary.logic.relaxation.EpsilonProducer;
+import com.netcracker.algorithms.auction.auxillary.entities.results.RelaxationPhaseResult;
 import com.netcracker.utils.logging.Logger;
 import com.netcracker.utils.logging.SystemOutLogger;
 
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.Callable;
 
+import static com.netcracker.algorithms.auction.auxillary.logic.bids.BidAggregator.aggregateBids;
+import static com.netcracker.algorithms.auction.auxillary.logic.bids.BidMaker.createCallableList;
+import static com.netcracker.algorithms.auction.auxillary.logic.bids.BidProcessor.processBidsAndUpdateAssignmentForItemList;
+import static com.netcracker.algorithms.auction.auxillary.logic.relaxation.EpsilonProducer.getEpsilonList;
 import static com.netcracker.algorithms.auction.auxillary.utils.ConcurrentUtils.executeCallableList;
 
 @SuppressWarnings("ALL")
 public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
 
-    private final static double STARTING_VALUE = -Double.MAX_VALUE;
-
     private final int threadAmount;
     private final Logger logger;
-    private final EpsilonProducer epsilonProducer;
 
     public SynchronousJacobiAlgorithm(int threadAmount) {
-        this(threadAmount, new SystemOutLogger(true));
+        this(threadAmount, new SystemOutLogger(false));
     }
 
     public SynchronousJacobiAlgorithm(int threadAmount, Logger logger) {
         this.threadAmount = threadAmount;
         this.logger = logger;
-        this.epsilonProducer = new EpsilonProducer(1.0, .25);
     }
 
     @Override
@@ -44,14 +43,15 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
         final BenefitMatrix benefitMatrix = new BenefitMatrix(inputBenefitMatrix);
         final int n = benefitMatrix.size();
         logger.info("Solving problem for size: %d", n);
+        final ItemList itemList = ItemList.createItemList(n);
         final PriceVector initialPriceVector = PriceVector.createInitialPriceVector(n);
-        final RelaxationPhaseResult finalResult = epsilonProducer
-                .getEpsilonList(n)
-                .stream()
-                .reduce(new RelaxationPhaseResult(null, initialPriceVector),
-                        (previousResult, epsilon) -> relaxationPhase(benefitMatrix, previousResult, epsilon),
-                        (a, b) -> b
-                );
+        final RelaxationPhaseResult finalResult =
+                getEpsilonList(1.0, 0.25, n)
+                        .stream()
+                        .reduce(new RelaxationPhaseResult(null, initialPriceVector),
+                                (previousResult, epsilon) -> relaxationPhase(benefitMatrix, itemList, previousResult, epsilon),
+                                (a, b) -> b
+                        );
         final Assignment finalAssignment = finalResult.getAssignment();
         if (finalAssignment.isComplete()) {
             return finalAssignment.getPersonAssignment();
@@ -61,14 +61,24 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
     }
 
     //todo find correct name for this method
-    private RelaxationPhaseResult relaxationPhase(BenefitMatrix benefitMatrix, RelaxationPhaseResult previousResult, double epsilon) {
+    private RelaxationPhaseResult relaxationPhase(BenefitMatrix benefitMatrix,
+                                                  ItemList itemList,
+                                                  RelaxationPhaseResult previousResult,
+                                                  double epsilon) {
         final int n = benefitMatrix.size();
         PriceVector priceVector = previousResult.getPriceVector();
         logger.info("  Prices at the beginning of phase: %s", priceVector);
-        PersonQueue nonAssignedPersonQueue = PersonQueue.createInitialPersonQueue(n);
+        PersonQueue nonAssignedPersonQueue = PersonQueue.createFullPersonQueue(n);
         final Assignment assignment = Assignment.createInitialAssignment(n);
         while (!nonAssignedPersonQueue.isEmpty()) {
-            auctionRound(assignment, nonAssignedPersonQueue, priceVector, benefitMatrix, epsilon);
+            auctionRound(
+                    assignment,
+                    nonAssignedPersonQueue,
+                    itemList,
+                    priceVector,
+                    benefitMatrix,
+                    epsilon
+            );
         }
 
         logger.info("  Prices at the end       of phase: %s", priceVector);
@@ -78,59 +88,46 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
 
     private void auctionRound(Assignment assignment,
                               PersonQueue nonAssignedPersonQueue,
+                              ItemList itemList,
                               PriceVector priceVector,
                               BenefitMatrix benefitMatrix,
                               double epsilon) {
         final int n = benefitMatrix.size();
-        final ItemList itemList = ItemList.createItemList(n);
         final int nonAssignedAmount = nonAssignedPersonQueue.size();
         final int taskAmount = nonAssignedAmount;
 
         logger.info("    Non assigned at the beginning of round: %s", nonAssignedPersonQueue);
         logger.info("    Assignment at the beginning of round: %s", assignment);
 
-        final Set<Bid> bidSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
-        final List<Callable<Bid>> callableList = nonAssignedPersonQueue
-                .stream()
-                .map((person) -> createCallableForCreatingBid(
-                        person,
-                        itemList,
-                        benefitMatrix,
-                        priceVector,
-                        epsilon
-                ))
-                .collect(Collectors.toList());
+        //==================== Bid making =================================
 
-        List<Bid> bidList = executeCallableList(callableList, threadAmount);
-        Map<Item, Queue<Bid>> bidMap = processBids(bidList, itemList);
+        /*
+            Multithreading part start
+         */
+        final List<Callable<Bid>> callableList = createCallableList(
+                nonAssignedPersonQueue,
+                itemList,
+                benefitMatrix,
+                priceVector,
+                epsilon
+        );
+        final List<Bid> bidList = executeCallableList(callableList, threadAmount);
+        /*
+            Multithreading part end
+         */
 
-        /* Assignment phase*/
-        nonAssignedPersonQueue.clear();
-        for (Item item : itemList) {
-            final Person oldOwner = assignment.getPersonForItem(item);
-            logger.info("      Bids for item number %s", item);
-            logger.info("      Old owner: %s", oldOwner);
-            final Queue<Bid> bidQueue = bidMap.get(item);
-            if (bidQueue.isEmpty()) {
-                logger.info("        No bids");
-                continue;
-            }
-            if (oldOwner != Person.NO_PERSON) {
-                nonAssignedPersonQueue.add(oldOwner);
-            }
+        //==================== Bid processing =============================
 
-            final Bid highestBid = bidQueue.remove();
-            final Person highestBidder = highestBid.getPerson();
-            assignment.setPersonForItem(item, highestBidder);
-            final double highestBidValue = highestBid.getBidValue();
-            priceVector.increasePrice(item, highestBidValue);
-            logger.info("        Highest bid: bidder - %s", highestBidder);
+        Map<Item, Queue<Bid>> bidMap = aggregateBids(bidList, itemList);
 
-            for (Bid failedBid : bidQueue) {
-                nonAssignedPersonQueue.add(failedBid.getPerson());
-                logger.info("        Failed bid: bidder - %s", failedBid.getPerson());
-            }
-        }
+        //==================== Assigment ==================================
+
+        nonAssignedPersonQueue = processBidsAndUpdateAssignmentForItemList(
+                assignment,
+                priceVector,
+                itemList,
+                bidMap
+        );
 
         if (nonAssignedPersonQueue.containsDuplicates()) {
             throw new IllegalStateException("Queue contains duplicates: " + nonAssignedPersonQueue);
@@ -138,59 +135,5 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
 
         logger.info("    Non assigned at the end: %s", nonAssignedPersonQueue);
         logger.info("    Assignment at the end of round: %s", assignment);
-    }
-
-    private static Callable<Bid> createCallableForCreatingBid(Person person,
-                                                              ItemList itemList,
-                                                              BenefitMatrix benefitMatrix,
-                                                              PriceVector priceVector,
-                                                              double epsilon) {
-        return () -> {
-            return createBid(
-                    person,
-                    itemList,
-                    benefitMatrix,
-                    priceVector,
-                    epsilon
-            );
-        };
-    }
-
-    private static Bid createBid(Person person,
-                                 ItemList itemList,
-                                 BenefitMatrix benefitMatrix,
-                                 PriceVector priceVector,
-                                 double epsilon) {
-        double bestValue = STARTING_VALUE;
-        double secondBestValue = STARTING_VALUE;
-        Item bestItem = Item.NO_ITEM;
-
-        for (Item item : itemList) {
-            int benefit = benefitMatrix.getBenefit(person, item);
-            double price = priceVector.getPriceFor(item);
-            double value = benefit - price;
-            if (value > bestValue) {
-                secondBestValue = bestValue;
-                bestValue = value;
-                bestItem = item;
-            } else if (value > secondBestValue) {
-                secondBestValue = value;
-            }
-        }
-        double bidValue = bestValue - secondBestValue + epsilon;
-        return new Bid(person, bestItem, bidValue);
-    }
-
-    private static Map<Item, Queue<Bid>> processBids(Collection<Bid> bidSet, ItemList itemList) {
-        Map<Item, Queue<Bid>> bidMap = new HashMap<>();
-        for (Item item : itemList) {
-            bidMap.put(item, new PriorityQueue<>(Collections.reverseOrder()));
-        }
-        for (Bid bid : bidSet) {
-            final Item item = bid.getItem();
-            final Queue<Bid> bidQueue = bidMap.get(item);
-            bidQueue.add(bid);
-        }
-        return bidMap;
     }
 }
