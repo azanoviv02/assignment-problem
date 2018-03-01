@@ -39,7 +39,7 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
         for (double epsilon = 1.0; epsilon > 1.0 / n; epsilon *= .25) {
             assignment = relaxationPhase(costMatrix, prices, epsilon);
         }
-        if(arrayContains(assignment, UNASSIGNED_VALUE)){
+        if (arrayContains(assignment, UNASSIGNED_VALUE)) {
             throw new IllegalStateException("Assignment is not complete");
         }
         return getReversedAssignment(assignment);
@@ -131,14 +131,17 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
 
         /* Assignment phase*/
         for (int j = 0; j < n; j++) {
+            final int oldOwner = assignment[j];
             logger.info("      Bids for object number " + j);
+            logger.info("      Old owner: " + oldOwner);
             final Queue<Bid> bidQueue = bidMap.get(j);
             if (bidQueue.isEmpty()) {
                 logger.info("        No bids");
                 continue;
             }
-            final int oldOwner = assignment[j];
-            nonAssignedList.add(oldOwner);
+            if (oldOwner != -1) {
+                nonAssignedList.add(oldOwner);
+            }
 
             final Bid highestBid = bidQueue.remove();
             final int highestBidderIndex = highestBid.getBidderIndex();
@@ -199,10 +202,10 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
                 .collect(Collectors.toList());
     }
 
-    private static int[] getReversedAssignment(int[] assignment){
+    private static int[] getReversedAssignment(int[] assignment) {
         final int n = assignment.length;
         final int[] reversedAssignment = new int[n];
-        for(int i = 0; i < n; i++){
+        for (int i = 0; i < n; i++) {
             final int value = assignment[i];
             reversedAssignment[value] = i;
         }
