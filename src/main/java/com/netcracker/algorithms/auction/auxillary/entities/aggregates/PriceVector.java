@@ -1,4 +1,6 @@
-package com.netcracker.algorithms.auction.auxillary.entities;
+package com.netcracker.algorithms.auction.auxillary.entities.aggregates;
+
+import com.netcracker.algorithms.auction.auxillary.entities.basic.Item;
 
 import java.util.Arrays;
 
@@ -6,7 +8,7 @@ public class PriceVector {
 
     public final static double INITIAL_PRICE = 1.0;
 
-    public final static PriceVector getInitialPriceVector(int n) {
+    public final static PriceVector createInitialPriceVector(int n) {
         return new PriceVector(getFilledDoubleArray(n, INITIAL_PRICE));
     }
 
@@ -17,12 +19,12 @@ public class PriceVector {
         this.priceArray = priceArray;
     }
 
-    public double getPriceFor(int index) {
-        return priceArray[index];
+    public double getPriceFor(Item item) {
+        return priceArray[item.getItemIndex()];
     }
 
-    public void increasePrice(int index, double amount) {
-        priceArray[index] += amount;
+    public void increasePrice(Item item, double amount) {
+        priceArray[item.getItemIndex()] += amount;
     }
 
     @Override

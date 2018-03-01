@@ -1,5 +1,8 @@
 package com.netcracker.algorithms.auction.auxillary.entities;
 
+import com.netcracker.algorithms.auction.auxillary.entities.aggregates.Assignment;
+import com.netcracker.algorithms.auction.auxillary.entities.aggregates.PriceVector;
+
 // todo think if it is really needed
 public class RelaxationPhaseResult {
     final Assignment assignment;

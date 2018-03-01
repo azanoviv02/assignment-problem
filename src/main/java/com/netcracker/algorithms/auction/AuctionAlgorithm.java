@@ -51,7 +51,7 @@ public class AuctionAlgorithm implements AssignmentProblemSolver {
                 nonAssigned.add(i);
 
                 /*
-                    Need the best and second best value of each object to this person
+                    Need the best and second best value of each item to this person
                     where value is calculated row_{j} - prices{j}
                 */
                 double optValForI = -MAX_VALUE;
@@ -70,7 +70,7 @@ public class AuctionAlgorithm implements AssignmentProblemSolver {
                     }
                 }
 
-			    /* Computes the highest reasonable bid for the best object for this person */
+			    /* Computes the highest reasonable bid for the best item for this person */
                 double bidForI = optValForI - secOptValForI + epsilon;
 
 			    /* Stores the bidding info for future use */
@@ -80,14 +80,14 @@ public class AuctionAlgorithm implements AssignmentProblemSolver {
         }
 
         /*
-            Each object which has received a bid determines the highest bidder and
+            Each item which has received a bid determines the highest bidder and
             updates its price accordingly
         */
         for (int j = 0; j < n; j++) {
             List<Integer> indexList = getIndicesWithValue(tempBidded, j);
             if (indexList.size() != 0) {
 
-			    /* Need the highest bid for object j */
+			    /* Need the highest bid for item j */
                 double highestBidForJ = -MAX_VALUE;
                 int i_j = -1;
                 for (int i = 0; i < indexList.size(); i++) {
@@ -98,7 +98,7 @@ public class AuctionAlgorithm implements AssignmentProblemSolver {
                     }
                 }
 
-			    /* Find the other person who has object j and make them unassigned */
+			    /* Find the other person who has item j and make them unassigned */
                 for (int i = 0; i < assignment.size(); i++) {
                     if (assignment.get(i) == j) {
                         assignment.set(i, MAX_VALUE);
@@ -106,7 +106,7 @@ public class AuctionAlgorithm implements AssignmentProblemSolver {
                     }
                 }
 
-			    /* Assign object j to i_j and update the price array */
+			    /* Assign item j to i_j and update the price array */
                 assignment.set(nonAssigned.get(i_j), j);
                 prices[j] += highestBidForJ;
             }

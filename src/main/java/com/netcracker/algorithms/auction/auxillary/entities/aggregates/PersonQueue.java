@@ -1,4 +1,6 @@
-package com.netcracker.algorithms.auction.auxillary.entities;
+package com.netcracker.algorithms.auction.auxillary.entities.aggregates;
+
+import com.netcracker.algorithms.auction.auxillary.entities.basic.Person;
 
 import java.util.ArrayDeque;
 import java.util.HashSet;
@@ -9,24 +11,24 @@ import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-public class PersonQueue implements Iterable<Integer> {
+public class PersonQueue implements Iterable<Person> {
 
-    public static final PersonQueue getInitialPersonQueue(int n) {
+    public static final PersonQueue createInitialPersonQueue(int n) {
         return new PersonQueue(getQueueOfRange(n));
     }
 
 
-    private final Queue<Integer> personQueue;
+    private final Queue<Person> personQueue;
 
     private PersonQueue(Queue personQueue) {
         this.personQueue = personQueue;
     }
 
-    public boolean add(int personIndex) {
-        return personQueue.add(personIndex);
+    public boolean add(Person person) {
+        return personQueue.add(person);
     }
 
-    public int remove() {
+    public Person remove() {
         return personQueue.remove();
     }
 
@@ -43,37 +45,42 @@ public class PersonQueue implements Iterable<Integer> {
     }
 
     public boolean containsDuplicates() {
-        Set<Integer> personSet = new HashSet<>(personQueue);
+        Set<Person> personSet = new HashSet<>(personQueue);
         return personSet.size() != personQueue.size();
     }
 
     @Override
-    public Iterator<Integer> iterator() {
+    public Iterator<Person> iterator() {
         return personQueue.iterator();
     }
 
     @Override
-    public Spliterator<Integer> spliterator() {
+    public Spliterator<Person> spliterator() {
         return personQueue.spliterator();
     }
 
-    public Stream<Integer> stream() {
+    public Stream<Person> stream() {
         return personQueue.stream();
     }
 
-    public Stream<Integer> parallelStream() {
+    public Stream<Person> parallelStream() {
         return personQueue.parallelStream();
     }
 
     @Override
-    public void forEach(Consumer<? super Integer> action) {
+    public void forEach(Consumer<? super Person> action) {
         personQueue.forEach(action);
     }
 
-    private static Queue<Integer> getQueueOfRange(int toExclusive) {
-        Queue<Integer> rangeQueue = new ArrayDeque<>(toExclusive);
+    @Override
+    public String toString() {
+        return personQueue.toString();
+    }
+
+    private static Queue<Person> getQueueOfRange(int toExclusive) {
+        Queue<Person> rangeQueue = new ArrayDeque<>(toExclusive);
         for (int i = 0; i < toExclusive; i++) {
-            rangeQueue.add(i);
+            rangeQueue.add(new Person(i));
         }
         return rangeQueue;
     }

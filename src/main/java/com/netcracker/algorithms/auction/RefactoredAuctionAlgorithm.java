@@ -44,13 +44,13 @@ public class RefactoredAuctionAlgorithm implements AssignmentProblemSolver {
                 nonAssigned.add(i);
 
                 /*
-                    Need the best and second best value of each object to this person
+                    Need the best and second best value of each item to this person
                     where value is calculated row_{j} - prices{j}
                 */
                 double bestValue = -UNASSIGNED_VALUE;
                 double secondBestValue = -UNASSIGNED_VALUE;
 
-                int bestObjectIndex = 0;
+                int bestItemIndex = 0;
 
                 for (int j = 0; j < n; j++) {
                     int cost = costMatrix[i][j];
@@ -60,17 +60,17 @@ public class RefactoredAuctionAlgorithm implements AssignmentProblemSolver {
                     if (value > bestValue) {
                         secondBestValue = bestValue;
                         bestValue = value;
-                        bestObjectIndex = j;
+                        bestItemIndex = j;
                     } else if (value > secondBestValue) {
                         secondBestValue = value;
                     }
                 }
 
-			    /* Computes the highest reasonable bid for the best object for this person */
+			    /* Computes the highest reasonable bid for the best item for this person */
                 double bid = bestValue - secondBestValue + epsilon;
 
 			    /* Stores the bidding info for future use */
-                tempBidded.add(bestObjectIndex);
+                tempBidded.add(bestItemIndex);
                 tempBids.add(bid);
             }
         }
@@ -80,7 +80,7 @@ public class RefactoredAuctionAlgorithm implements AssignmentProblemSolver {
             List<Integer> bidderIndexList = getIndicesWithValue(tempBidded, j);
             if (!bidderIndexList.isEmpty()) {
 
-			    /* Need the highest bid for object j */
+			    /* Need the highest bid for item j */
                 double highestBid = -UNASSIGNED_VALUE;
                 int highestBidderIndex = -1;
                 for (int i = 0; i < bidderIndexList.size(); i++) {
@@ -91,7 +91,7 @@ public class RefactoredAuctionAlgorithm implements AssignmentProblemSolver {
                     }
                 }
 
-			    /* Find the other person who has object j and make them unassigned */
+			    /* Find the other person who has item j and make them unassigned */
                 for (int i = 0; i < assignment.length; i++) {
                     if (assignment[i] == j) {
                         assignment[i] = UNASSIGNED_VALUE;
@@ -99,7 +99,7 @@ public class RefactoredAuctionAlgorithm implements AssignmentProblemSolver {
                     }
                 }
 
-			    /* Assign object j to i_j and update the price array */
+			    /* Assign item j to i_j and update the price array */
 //                assignment.set(nonAssigned.get(i_j), j);
                 assignment[nonAssigned.get(highestBidderIndex)] = j;
                 prices[j] += highestBid;
