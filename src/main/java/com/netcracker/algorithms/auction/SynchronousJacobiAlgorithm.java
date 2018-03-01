@@ -18,6 +18,8 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
+import static com.netcracker.algorithms.auction.auxillary.utils.ConcurrentUtils.executeCallableList;
+
 @SuppressWarnings("ALL")
 public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
 
@@ -88,10 +90,9 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
         logger.info("    Assignment at the beginning of round: %s", assignment);
 
         final Set<Bid> bidSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
-        final List<Runnable> taskList = nonAssignedPersonQueue
+        final List<Callable<Bid>> callableList = nonAssignedPersonQueue
                 .stream()
-                .map((person) -> createTaskForAddingBid(
-                        bidSet,
+                .map((person) -> createCallableForCreatingBid(
                         person,
                         itemList,
                         benefitMatrix,
@@ -100,9 +101,8 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
                 ))
                 .collect(Collectors.toList());
 
-        executeTaskList(taskList);
-
-        Map<Item, Queue<Bid>> bidMap = processBids(bidSet, itemList);
+        List<Bid> bidList = executeCallableList(callableList, threadAmount);
+        Map<Item, Queue<Bid>> bidMap = processBids(bidList, itemList);
 
         /* Assignment phase*/
         nonAssignedPersonQueue.clear();
@@ -140,30 +140,27 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
         logger.info("    Assignment at the end of round: %s", assignment);
     }
 
-    private Runnable createTaskForAddingBid(Set<Bid> bidSet,
-                                            Person person,
-                                            ItemList itemList,
-                                            BenefitMatrix benefitMatrix,
-                                            PriceVector priceVector,
-                                            double epsilon) {
+    private static Callable<Bid> createCallableForCreatingBid(Person person,
+                                                              ItemList itemList,
+                                                              BenefitMatrix benefitMatrix,
+                                                              PriceVector priceVector,
+                                                              double epsilon) {
         return () -> {
-            bidSet.add(
-                    createBid(
-                            person,
-                            itemList,
-                            benefitMatrix,
-                            priceVector,
-                            epsilon
-                    )
+            return createBid(
+                    person,
+                    itemList,
+                    benefitMatrix,
+                    priceVector,
+                    epsilon
             );
         };
     }
 
-    private Bid createBid(Person person,
-                          ItemList itemList,
-                          BenefitMatrix benefitMatrix,
-                          PriceVector priceVector,
-                          double epsilon) {
+    private static Bid createBid(Person person,
+                                 ItemList itemList,
+                                 BenefitMatrix benefitMatrix,
+                                 PriceVector priceVector,
+                                 double epsilon) {
         double bestValue = STARTING_VALUE;
         double secondBestValue = STARTING_VALUE;
         Item bestItem = Item.NO_ITEM;
@@ -184,23 +181,7 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
         return new Bid(person, bestItem, bidValue);
     }
 
-    private void executeTaskList(List<Runnable> taskList) {
-        ExecutorService executorService = Executors.newFixedThreadPool(threadAmount);
-        List<Future> futureList = new LinkedList<>();
-        for (Runnable runnable : taskList) {
-            futureList.add(executorService.submit(runnable));
-        }
-        for (Future future : futureList) {
-            try {
-                future.get();
-            } catch (InterruptedException | ExecutionException e) {
-                throw new IllegalStateException(e);
-            }
-        }
-        executorService.shutdown();
-    }
-
-    private Map<Item, Queue<Bid>> processBids(Set<Bid> bidSet, ItemList itemList) {
+    private static Map<Item, Queue<Bid>> processBids(Collection<Bid> bidSet, ItemList itemList) {
         Map<Item, Queue<Bid>> bidMap = new HashMap<>();
         for (Item item : itemList) {
             bidMap.put(item, new PriorityQueue<>(Collections.reverseOrder()));
