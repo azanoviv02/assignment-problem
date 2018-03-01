@@ -16,6 +16,7 @@ import com.netcracker.utils.logging.SystemOutLogger;
 
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 @SuppressWarnings("ALL")
 public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
@@ -83,46 +84,24 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
         final int nonAssignedAmount = nonAssignedPersonQueue.size();
         final int taskAmount = nonAssignedAmount;
 
-        final Set<Bid> bidSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
-        final List<Runnable> taskList = new ArrayList<>(taskAmount);
-
         logger.info("    Non assigned at the beginning of round: %s", nonAssignedPersonQueue);
         logger.info("    Assignment at the beginning of round: %s", assignment);
 
-        /* Bidding phase */
-        /* Executed in parallel */
-        for (Person person : nonAssignedPersonQueue) {
+        final Set<Bid> bidSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
+        final List<Runnable> taskList = nonAssignedPersonQueue
+                .stream()
+                .map((person) -> createTaskForAddingBid(
+                        bidSet,
+                        person,
+                        itemList,
+                        benefitMatrix,
+                        priceVector,
+                        epsilon
+                ))
+                .collect(Collectors.toList());
 
-            Runnable makeBidTask = () -> {
-                bidSet.add(
-                        createBid(
-                                person,
-                                itemList,
-                                benefitMatrix,
-                                priceVector,
-                                epsilon
-                        )
-                );
-            };
+        executeTaskList(taskList);
 
-            taskList.add(makeBidTask);
-        }
-
-        ExecutorService executorService = Executors.newFixedThreadPool(threadAmount);
-        List<Future> futureList = new LinkedList<>();
-        for (Runnable runnable : taskList) {
-            futureList.add(executorService.submit(runnable));
-        }
-        for (Future future : futureList) {
-            try {
-                future.get();
-            } catch (InterruptedException | ExecutionException e) {
-                throw new IllegalStateException(e);
-            }
-        }
-        executorService.shutdown();
-
-        /* Processing bids */
         Map<Item, Queue<Bid>> bidMap = processBids(bidSet, itemList);
 
         /* Assignment phase*/
@@ -161,6 +140,25 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
         logger.info("    Assignment at the end of round: %s", assignment);
     }
 
+    private Runnable createTaskForAddingBid(Set<Bid> bidSet,
+                                            Person person,
+                                            ItemList itemList,
+                                            BenefitMatrix benefitMatrix,
+                                            PriceVector priceVector,
+                                            double epsilon) {
+        return () -> {
+            bidSet.add(
+                    createBid(
+                            person,
+                            itemList,
+                            benefitMatrix,
+                            priceVector,
+                            epsilon
+                    )
+            );
+        };
+    }
+
     private Bid createBid(Person person,
                           ItemList itemList,
                           BenefitMatrix benefitMatrix,
@@ -184,6 +182,22 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
         }
         double bidValue = bestValue - secondBestValue + epsilon;
         return new Bid(person, bestItem, bidValue);
+    }
+
+    private void executeTaskList(List<Runnable> taskList) {
+        ExecutorService executorService = Executors.newFixedThreadPool(threadAmount);
+        List<Future> futureList = new LinkedList<>();
+        for (Runnable runnable : taskList) {
+            futureList.add(executorService.submit(runnable));
+        }
+        for (Future future : futureList) {
+            try {
+                future.get();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+        executorService.shutdown();
     }
 
     private Map<Item, Queue<Bid>> processBids(Set<Bid> bidSet, ItemList itemList) {
