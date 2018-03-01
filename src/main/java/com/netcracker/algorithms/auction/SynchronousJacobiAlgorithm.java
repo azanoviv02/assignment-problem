@@ -2,6 +2,7 @@ package com.netcracker.algorithms.auction;
 
 import com.netcracker.algorithms.AssignmentProblemSolver;
 import com.netcracker.algorithms.auction.auxillary.entities.Bid;
+import com.netcracker.algorithms.auction.auxillary.entities.RelaxationPhaseResult;
 import com.netcracker.algorithms.auction.auxillary.logic.relaxation.EpsilonProducer;
 import com.netcracker.utils.logging.Logger;
 import com.netcracker.utils.logging.SystemOutLogger;
@@ -38,14 +39,16 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
         final int n = costMatrix.length;
         final double[] prices = getFilledDoubleArray(n, INITIAL_PRICE);
 
-        final int[] assignment =
+        final RelaxationPhaseResult finalResult =
                 epsilonProducer
                         .getEpsilonList(n)
                         .stream()
-                        .<int[]>map((epsilon) -> relaxationPhase(costMatrix, prices, epsilon))
-                        .reduce((a, b) -> b)
-                        .orElse(null);
+                        .reduce(new RelaxationPhaseResult(null, prices),
+                                (previousResult, epsilon) -> relaxationPhase(costMatrix, previousResult, epsilon),
+                                (a, b) -> b
+                        );
 
+        final int[] assignment = finalResult.getAssignment();
         if (arrayContains(assignment, UNASSIGNED_VALUE)) {
             throw new IllegalStateException("Assignment is not complete");
         }
@@ -53,17 +56,20 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
     }
 
     //todo find correct name for this method
-    private int[] relaxationPhase(int[][] costMatrix, double[] prices, double epsilon) {
+    private RelaxationPhaseResult relaxationPhase(int[][] costMatrix, RelaxationPhaseResult relaxationPhaseResult, double epsilon) {
+        double[] prices = relaxationPhaseResult.getPrices();
         logger.info("  Prices at the beginning of phase: " + Arrays.toString(prices));
         final int n = costMatrix.length;
         Queue<Integer> nonAssignedPersonQueue = getQueueOfRange(n);
         final int[] assignment = getFilledIntArray(n, UNASSIGNED_VALUE);
+
         while (!nonAssignedPersonQueue.isEmpty()) {
             auctionRound(assignment, nonAssignedPersonQueue, prices, costMatrix, epsilon);
         }
+
         logger.info("  Prices at the end       of phase: " + Arrays.toString(prices));
         logger.info("  Assignment at the end   of phase: " + Arrays.toString(assignment));
-        return assignment;
+        return new RelaxationPhaseResult(assignment, prices);
     }
 
     private void auctionRound(int[] assignment,
