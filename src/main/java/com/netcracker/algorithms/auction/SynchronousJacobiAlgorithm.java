@@ -1,7 +1,8 @@
 package com.netcracker.algorithms.auction;
 
 import com.netcracker.algorithms.AssignmentProblemSolver;
-import com.netcracker.algorithms.auction.auxillary.Bid;
+import com.netcracker.algorithms.auction.auxillary.entities.Bid;
+import com.netcracker.algorithms.auction.auxillary.logic.relaxation.EpsilonProducer;
 import com.netcracker.utils.logging.Logger;
 import com.netcracker.utils.logging.SystemOutLogger;
 
@@ -19,6 +20,7 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
 
     private final int threadAmount;
     private final Logger logger;
+    private final EpsilonProducer epsilonProducer;
 
     public SynchronousJacobiAlgorithm(int threadAmount) {
         this(threadAmount, new SystemOutLogger(false));
@@ -27,6 +29,7 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
     public SynchronousJacobiAlgorithm(int threadAmount, Logger logger) {
         this.threadAmount = threadAmount;
         this.logger = logger;
+        this.epsilonProducer = new EpsilonProducer(1.0, .25);
     }
 
     @Override
@@ -35,17 +38,21 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
         final int n = costMatrix.length;
         final double[] prices = getFilledDoubleArray(n, INITIAL_PRICE);
 
-        int[] assignment = null;
-        final double initialEpsilon = 1.0;
-        for (double epsilon = initialEpsilon; epsilon > 1.0 / n; epsilon *= .25) {
-            assignment = relaxationPhase(costMatrix, prices, epsilon);
-        }
+        final int[] assignment =
+                epsilonProducer
+                        .getEpsilonList(n)
+                        .stream()
+                        .<int[]>map((epsilon) -> relaxationPhase(costMatrix, prices, epsilon))
+                        .reduce((a, b) -> b)
+                        .orElse(null);
+
         if (arrayContains(assignment, UNASSIGNED_VALUE)) {
             throw new IllegalStateException("Assignment is not complete");
         }
         return getReversedAssignment(assignment);
     }
 
+    //todo find correct name for this method
     private int[] relaxationPhase(int[][] costMatrix, double[] prices, double epsilon) {
         logger.info("  Prices at the beginning of phase: " + Arrays.toString(prices));
         final int n = costMatrix.length;

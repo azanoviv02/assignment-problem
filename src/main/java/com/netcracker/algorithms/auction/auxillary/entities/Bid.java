@@ -1,4 +1,4 @@
-package com.netcracker.algorithms.auction.auxillary;
+package com.netcracker.algorithms.auction.auxillary.entities;
 
 public class Bid implements Comparable<Bid> {
 

@@ -14,6 +14,8 @@ public class SystemOutLogger implements Logger {
 
     @Override
     public void info(String statement) {
-        System.out.println(statement);
+        if (enabled) {
+            System.out.println(statement);
+        }
     }
 }
