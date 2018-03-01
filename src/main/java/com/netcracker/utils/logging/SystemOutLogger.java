@@ -13,9 +13,10 @@ public class SystemOutLogger implements Logger {
     }
 
     @Override
-    public void info(String statement) {
+    public void info(String format, Object... args) {
         if (enabled) {
-            System.out.println(statement);
+            String formattedString = String.format(format, args);
+            System.out.println(formattedString);
         }
     }
 }

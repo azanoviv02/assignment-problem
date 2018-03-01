@@ -1,5 +1,5 @@
 package com.netcracker.utils.logging;
 
 public interface Logger {
-    void info(String statement);
+    void info(String format, Object... args);
 }

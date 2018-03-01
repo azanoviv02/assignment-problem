@@ -3,6 +3,7 @@ package com.netcracker.algorithms.auction;
 import com.netcracker.algorithms.AssignmentProblemSolver;
 import com.netcracker.algorithms.auction.auxillary.entities.Assignment;
 import com.netcracker.algorithms.auction.auxillary.entities.Bid;
+import com.netcracker.algorithms.auction.auxillary.entities.PersonQueue;
 import com.netcracker.algorithms.auction.auxillary.entities.PriceVector;
 import com.netcracker.algorithms.auction.auxillary.entities.RelaxationPhaseResult;
 import com.netcracker.algorithms.auction.auxillary.logic.relaxation.EpsilonProducer;
@@ -17,7 +18,6 @@ import java.util.stream.IntStream;
 @SuppressWarnings("ALL")
 public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
 
-    private final static double INITIAL_PRICE = 1.0;
     private final static double UNASSIGNED_DOUBLE = -Double.MAX_VALUE;
 
     private final int threadAmount;
@@ -37,16 +37,15 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
     @Override
     public int[] findMaxCostMatching(int[][] costMatrix) {
         final int n = costMatrix.length;
-        logger.info("Solving problem for size: " + n);
-        final PriceVector initialPriceVector = new PriceVector(getFilledDoubleArray(n, INITIAL_PRICE));
-        final RelaxationPhaseResult finalResult =
-                epsilonProducer
-                        .getEpsilonList(n)
-                        .stream()
-                        .reduce(new RelaxationPhaseResult(null, initialPriceVector),
-                                (previousResult, epsilon) -> relaxationPhase(costMatrix, previousResult, epsilon),
-                                (a, b) -> b
-                        );
+        logger.info("Solving problem for size: %d", n);
+        final PriceVector initialPriceVector = PriceVector.getInitialPriceVector(n);
+        final RelaxationPhaseResult finalResult = epsilonProducer
+                .getEpsilonList(n)
+                .stream()
+                .reduce(new RelaxationPhaseResult(null, initialPriceVector),
+                        (previousResult, epsilon) -> relaxationPhase(costMatrix, previousResult, epsilon),
+                        (a, b) -> b
+                );
         final Assignment finalAssignment = finalResult.getAssignment();
         if (finalAssignment.isComplete()) {
             return finalAssignment.getPersonAssignment();
@@ -58,21 +57,21 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
     //todo find correct name for this method
     private RelaxationPhaseResult relaxationPhase(int[][] costMatrix, RelaxationPhaseResult previousResult, double epsilon) {
         PriceVector priceVector = previousResult.getPriceVector();
-        logger.info("  Prices at the beginning of phase: " + priceVector);
+        logger.info("  Prices at the beginning of phase: %s", priceVector);
         final int n = costMatrix.length;
-        Queue<Integer> nonAssignedPersonQueue = getQueueOfRange(n);
+        PersonQueue nonAssignedPersonQueue = PersonQueue.getInitialPersonQueue(n);
         final Assignment assignment = Assignment.getInitialAssignment(n);
         while (!nonAssignedPersonQueue.isEmpty()) {
             auctionRound(assignment, nonAssignedPersonQueue, priceVector, costMatrix, epsilon);
         }
 
-        logger.info("  Prices at the end       of phase: " + priceVector);
-        logger.info("  Assignment at the end   of phase: " + assignment);
+        logger.info("  Prices at the end       of phase: %s", priceVector);
+        logger.info("  Assignment at the end   of phase: %s", assignment);
         return new RelaxationPhaseResult(assignment, priceVector);
     }
 
     private void auctionRound(Assignment assignment,
-                              Queue<Integer> nonAssignedPersonQueue,
+                              PersonQueue nonAssignedPersonQueue,
                               PriceVector priceVector,
                               int[][] costMatrix,
                               double epsilon) {
@@ -83,8 +82,8 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
         final Set<Bid> bidSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
         final List<Runnable> taskList = new ArrayList<>(taskAmount);
 
-        logger.info("    Non assigned at the beginning of round: " + nonAssignedPersonQueue);
-        logger.info("    Assignment at the beginning of round: " + assignment);
+        logger.info("    Non assigned at the beginning of round: %s", nonAssignedPersonQueue);
+        logger.info("    Assignment at the beginning of round: %s", assignment);
         /* Bidding phase */
         for (int i : nonAssignedPersonQueue) {
             Runnable findBidTask = () -> {
@@ -95,7 +94,7 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
 
                 for (int j = 0; j < n; j++) {
                     int cost = costMatrix[i][j];
-                    double price = priceVector.getPrices()[j];
+                    double price = priceVector.getPriceFor(j);
                     double value = cost - price;
 
                     if (value > bestValue) {
@@ -143,11 +142,11 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
         nonAssignedPersonQueue.clear();
 
         /* Assignment phase*/
-        for (int j = 0; j < n; j++) {
-            final int oldOwner = assignment.getObjectAssignment()[j];
-            logger.info("      Bids for object number " + j);
-            logger.info("      Old owner: " + oldOwner);
-            final Queue<Bid> bidQueue = bidMap.get(j);
+        for (int objectIndex = 0; objectIndex < n; objectIndex++) {
+            final int oldOwner = assignment.getPersonForObject(objectIndex);
+            logger.info("      Bids for object number %s", objectIndex);
+            logger.info("      Old owner: %s", oldOwner);
+            final Queue<Bid> bidQueue = bidMap.get(objectIndex);
             if (bidQueue.isEmpty()) {
                 logger.info("        No bids");
                 continue;
@@ -158,45 +157,22 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
 
             final Bid highestBid = bidQueue.remove();
             final int highestBidderIndex = highestBid.getBidderIndex();
-            assignment.getObjectAssignment()[j] = highestBidderIndex;
+            assignment.setPersonForObject(objectIndex, highestBidderIndex);
             final double highestBidValue = highestBid.getBidValue();
-            priceVector.getPrices()[j] += highestBidValue;
-            logger.info("        Highest bid: bidder - " + highestBidderIndex);
+            priceVector.increasePrice(objectIndex, highestBidValue);
+            logger.info("        Highest bid: bidder - %s", highestBidderIndex);
 
             for (Bid failedBid : bidQueue) {
                 nonAssignedPersonQueue.add(failedBid.getBidderIndex());
-                logger.info("        Failed bid: bidder - " + failedBid.getBidderIndex());
+                logger.info("        Failed bid: bidder - %s", failedBid.getBidderIndex());
             }
         }
 
-        Set<Integer> nonAssignedSet = new HashSet<>(nonAssignedPersonQueue);
-        if (nonAssignedSet.size() != nonAssignedPersonQueue.size()) {
+        if (nonAssignedPersonQueue.containsDuplicates()) {
             throw new IllegalStateException("Queue contains duplicates");
         }
 
-        logger.info("    Non assigned at the end: " + nonAssignedPersonQueue);
-        logger.info("    Assignment at the end of round: " + assignment);
-    }
-
-    private static Queue<Integer> getQueueOfRange(int toExclusive) {
-        Queue<Integer> rangeQueue = new ArrayDeque<>(toExclusive);
-        for (int i = 0; i < toExclusive; i++) {
-            rangeQueue.add(i);
-        }
-        return rangeQueue;
-    }
-
-    private static double[] getFilledDoubleArray(int n, double value) {
-        double[] array = new double[n];
-        Arrays.fill(array, value);
-        return array;
-    }
-
-    private static List<Integer> getIndicesWithValue(final List<Integer> list, final int value) {
-        return IntStream
-                .range(0, list.size())
-                .filter(i -> list.get(i) == value)
-                .boxed()
-                .collect(Collectors.toList());
+        logger.info("    Non assigned at the end: %s", nonAssignedPersonQueue);
+        logger.info("    Assignment at the end of round: %s", assignment);
     }
 }

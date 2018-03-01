@@ -4,43 +4,61 @@ import java.util.Arrays;
 
 public class Assignment {
 
-    public final static Assignment getInitialAssignment(int n){
+    public final static int UNASSIGNED_VALUE = -1;
+
+    public final static Assignment getInitialAssignment(int n) {
         return new Assignment(getFilledIntArray(n, UNASSIGNED_VALUE));
     }
 
-    public final static int UNASSIGNED_VALUE = -1;
 
-    private final int[] assignment;
+    private final int[] assignmentArray;
 
-    public Assignment(int[] assignment) {
-        this.assignment = assignment;
+    public Assignment(int[] assignmentArray) {
+        this.assignmentArray = assignmentArray;
+    }
+
+    public int getPersonForObject(int objectIndex){
+        return assignmentArray[objectIndex];
+    }
+
+    public void setPersonForObject(int objectIndex, int personIndex){
+        assignmentArray[objectIndex] = personIndex;
     }
 
     /**
-     * Returns array, where each element represent object
+     * Returns array, where each element represent object.
+     * Should be used only to get result.
      *
      * @return
      */
-    public int[] getObjectAssignment() {
-        return assignment;
+    private int[] getObjectAssignment() {
+        return assignmentArray;
     }
 
+    /**
+     * Returns array, where each element represent person.
+     * Used only to get final result
+     *
+     * @return
+     */
     public int[] getPersonAssignment() {
         if (isComplete()) {
-            return getReversedAssignment(assignment);
+            return getReversedAssignment(assignmentArray);
         } else {
-            throw new IllegalStateException("Unable to revert incomplete assignment");
+            throw new IllegalStateException("Unable to revert incomplete assignmentArray");
         }
     }
 
+
     public boolean isComplete() {
-        return !arrayContains(assignment, UNASSIGNED_VALUE);
+        return !arrayContains(assignmentArray, UNASSIGNED_VALUE);
     }
 
     @Override
     public String toString() {
-        return Arrays.toString(assignment);
+        return Arrays.toString(assignmentArray);
     }
+
 
     private static int[] getReversedAssignment(int[] assignment) {
         final int n = assignment.length;
