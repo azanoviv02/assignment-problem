@@ -1,7 +1,9 @@
 package com.netcracker.algorithms.auction;
 
 import com.netcracker.algorithms.AssignmentProblemSolver;
+import com.netcracker.algorithms.auction.auxillary.entities.Assignment;
 import com.netcracker.algorithms.auction.auxillary.entities.Bid;
+import com.netcracker.algorithms.auction.auxillary.entities.PriceVector;
 import com.netcracker.algorithms.auction.auxillary.entities.RelaxationPhaseResult;
 import com.netcracker.algorithms.auction.auxillary.logic.relaxation.EpsilonProducer;
 import com.netcracker.utils.logging.Logger;
@@ -16,7 +18,6 @@ import java.util.stream.IntStream;
 public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
 
     private final static double INITIAL_PRICE = 1.0;
-    private final static int UNASSIGNED_VALUE = -1;
     private final static double UNASSIGNED_DOUBLE = -Double.MAX_VALUE;
 
     private final int threadAmount;
@@ -35,49 +36,47 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
 
     @Override
     public int[] findMaxCostMatching(int[][] costMatrix) {
-        logger.info("Solving problem for size: " + costMatrix.length);
         final int n = costMatrix.length;
-        final double[] prices = getFilledDoubleArray(n, INITIAL_PRICE);
-
+        logger.info("Solving problem for size: " + n);
+        final PriceVector initialPriceVector = new PriceVector(getFilledDoubleArray(n, INITIAL_PRICE));
         final RelaxationPhaseResult finalResult =
                 epsilonProducer
                         .getEpsilonList(n)
                         .stream()
-                        .reduce(new RelaxationPhaseResult(null, prices),
+                        .reduce(new RelaxationPhaseResult(null, initialPriceVector),
                                 (previousResult, epsilon) -> relaxationPhase(costMatrix, previousResult, epsilon),
                                 (a, b) -> b
                         );
-
-        final int[] assignment = finalResult.getAssignment();
-        if (arrayContains(assignment, UNASSIGNED_VALUE)) {
+        final Assignment finalAssignment = finalResult.getAssignment();
+        if (finalAssignment.isComplete()) {
+            return finalAssignment.getPersonAssignment();
+        } else {
             throw new IllegalStateException("Assignment is not complete");
         }
-        return getReversedAssignment(assignment);
     }
 
     //todo find correct name for this method
-    private RelaxationPhaseResult relaxationPhase(int[][] costMatrix, RelaxationPhaseResult relaxationPhaseResult, double epsilon) {
-        double[] prices = relaxationPhaseResult.getPrices();
-        logger.info("  Prices at the beginning of phase: " + Arrays.toString(prices));
+    private RelaxationPhaseResult relaxationPhase(int[][] costMatrix, RelaxationPhaseResult previousResult, double epsilon) {
+        PriceVector priceVector = previousResult.getPriceVector();
+        logger.info("  Prices at the beginning of phase: " + priceVector);
         final int n = costMatrix.length;
         Queue<Integer> nonAssignedPersonQueue = getQueueOfRange(n);
-        final int[] assignment = getFilledIntArray(n, UNASSIGNED_VALUE);
-
+        final Assignment assignment = Assignment.getInitialAssignment(n);
         while (!nonAssignedPersonQueue.isEmpty()) {
-            auctionRound(assignment, nonAssignedPersonQueue, prices, costMatrix, epsilon);
+            auctionRound(assignment, nonAssignedPersonQueue, priceVector, costMatrix, epsilon);
         }
 
-        logger.info("  Prices at the end       of phase: " + Arrays.toString(prices));
-        logger.info("  Assignment at the end   of phase: " + Arrays.toString(assignment));
-        return new RelaxationPhaseResult(assignment, prices);
+        logger.info("  Prices at the end       of phase: " + priceVector);
+        logger.info("  Assignment at the end   of phase: " + assignment);
+        return new RelaxationPhaseResult(assignment, priceVector);
     }
 
-    private void auctionRound(int[] assignment,
+    private void auctionRound(Assignment assignment,
                               Queue<Integer> nonAssignedPersonQueue,
-                              double[] prices,
+                              PriceVector priceVector,
                               int[][] costMatrix,
                               double epsilon) {
-        final int n = prices.length;
+        final int n = costMatrix.length;
         final int nonAssignedAmount = nonAssignedPersonQueue.size();
         final int taskAmount = nonAssignedAmount;
 
@@ -85,7 +84,7 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
         final List<Runnable> taskList = new ArrayList<>(taskAmount);
 
         logger.info("    Non assigned at the beginning of round: " + nonAssignedPersonQueue);
-        logger.info("    Assignment at the beginning of round: " + Arrays.toString(assignment));
+        logger.info("    Assignment at the beginning of round: " + assignment);
         /* Bidding phase */
         for (int i : nonAssignedPersonQueue) {
             Runnable findBidTask = () -> {
@@ -96,7 +95,7 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
 
                 for (int j = 0; j < n; j++) {
                     int cost = costMatrix[i][j];
-                    double price = prices[j];
+                    double price = priceVector.getPrices()[j];
                     double value = cost - price;
 
                     if (value > bestValue) {
@@ -145,7 +144,7 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
 
         /* Assignment phase*/
         for (int j = 0; j < n; j++) {
-            final int oldOwner = assignment[j];
+            final int oldOwner = assignment.getObjectAssignment()[j];
             logger.info("      Bids for object number " + j);
             logger.info("      Old owner: " + oldOwner);
             final Queue<Bid> bidQueue = bidMap.get(j);
@@ -159,9 +158,9 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
 
             final Bid highestBid = bidQueue.remove();
             final int highestBidderIndex = highestBid.getBidderIndex();
-            assignment[j] = highestBidderIndex;
+            assignment.getObjectAssignment()[j] = highestBidderIndex;
             final double highestBidValue = highestBid.getBidValue();
-            prices[j] += highestBidValue;
+            priceVector.getPrices()[j] += highestBidValue;
             logger.info("        Highest bid: bidder - " + highestBidderIndex);
 
             for (Bid failedBid : bidQueue) {
@@ -176,7 +175,7 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
         }
 
         logger.info("    Non assigned at the end: " + nonAssignedPersonQueue);
-        logger.info("    Assignment at the end of round: " + Arrays.toString(assignment));
+        logger.info("    Assignment at the end of round: " + assignment);
     }
 
     private static Queue<Integer> getQueueOfRange(int toExclusive) {
@@ -187,25 +186,10 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
         return rangeQueue;
     }
 
-    private static int[] getFilledIntArray(int n, int value) {
-        int[] array = new int[n];
-        Arrays.fill(array, value);
-        return array;
-    }
-
     private static double[] getFilledDoubleArray(int n, double value) {
         double[] array = new double[n];
         Arrays.fill(array, value);
         return array;
-    }
-
-    private static boolean arrayContains(int[] array, int value) {
-        for (int element : array) {
-            if (element == value) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private static List<Integer> getIndicesWithValue(final List<Integer> list, final int value) {
@@ -214,15 +198,5 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
                 .filter(i -> list.get(i) == value)
                 .boxed()
                 .collect(Collectors.toList());
-    }
-
-    private static int[] getReversedAssignment(int[] assignment) {
-        final int n = assignment.length;
-        final int[] reversedAssignment = new int[n];
-        for (int i = 0; i < n; i++) {
-            final int value = assignment[i];
-            reversedAssignment[value] = i;
-        }
-        return reversedAssignment;
     }
 }
