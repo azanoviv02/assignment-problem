@@ -2,6 +2,7 @@ package com.netcracker.algorithms.auction;
 
 import com.netcracker.algorithms.AssignmentProblemSolver;
 import com.netcracker.algorithms.auction.auxillary.entities.aggregates.Assignment;
+import com.netcracker.algorithms.auction.auxillary.entities.aggregates.BenefitMatrix;
 import com.netcracker.algorithms.auction.auxillary.entities.aggregates.ItemList;
 import com.netcracker.algorithms.auction.auxillary.entities.basic.Bid;
 import com.netcracker.algorithms.auction.auxillary.entities.aggregates.PersonQueue;
@@ -19,14 +20,14 @@ import java.util.concurrent.*;
 @SuppressWarnings("ALL")
 public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
 
-    private final static double UNASSIGNED_DOUBLE = -Double.MAX_VALUE;
+    private final static double STARTING_VALUE = -Double.MAX_VALUE;
 
     private final int threadAmount;
     private final Logger logger;
     private final EpsilonProducer epsilonProducer;
 
     public SynchronousJacobiAlgorithm(int threadAmount) {
-        this(threadAmount, new SystemOutLogger(false));
+        this(threadAmount, new SystemOutLogger(true));
     }
 
     public SynchronousJacobiAlgorithm(int threadAmount, Logger logger) {
@@ -36,15 +37,16 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
     }
 
     @Override
-    public int[] findMaxCostMatching(int[][] costMatrix) {
-        final int n = costMatrix.length;
+    public int[] findMaxCostMatching(int[][] inputBenefitMatrix) {
+        final BenefitMatrix benefitMatrix = new BenefitMatrix(inputBenefitMatrix);
+        final int n = benefitMatrix.size();
         logger.info("Solving problem for size: %d", n);
         final PriceVector initialPriceVector = PriceVector.createInitialPriceVector(n);
         final RelaxationPhaseResult finalResult = epsilonProducer
                 .getEpsilonList(n)
                 .stream()
                 .reduce(new RelaxationPhaseResult(null, initialPriceVector),
-                        (previousResult, epsilon) -> relaxationPhase(costMatrix, previousResult, epsilon),
+                        (previousResult, epsilon) -> relaxationPhase(benefitMatrix, previousResult, epsilon),
                         (a, b) -> b
                 );
         final Assignment finalAssignment = finalResult.getAssignment();
@@ -56,14 +58,14 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
     }
 
     //todo find correct name for this method
-    private RelaxationPhaseResult relaxationPhase(int[][] costMatrix, RelaxationPhaseResult previousResult, double epsilon) {
+    private RelaxationPhaseResult relaxationPhase(BenefitMatrix benefitMatrix, RelaxationPhaseResult previousResult, double epsilon) {
         PriceVector priceVector = previousResult.getPriceVector();
         logger.info("  Prices at the beginning of phase: %s", priceVector);
-        final int n = costMatrix.length;
+        final int n = benefitMatrix.size();
         PersonQueue nonAssignedPersonQueue = PersonQueue.createInitialPersonQueue(n);
         final Assignment assignment = Assignment.createInitialAssignment(n);
         while (!nonAssignedPersonQueue.isEmpty()) {
-            auctionRound(assignment, nonAssignedPersonQueue, priceVector, costMatrix, epsilon);
+            auctionRound(assignment, nonAssignedPersonQueue, priceVector, benefitMatrix, epsilon);
         }
 
         logger.info("  Prices at the end       of phase: %s", priceVector);
@@ -74,9 +76,9 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
     private void auctionRound(Assignment assignment,
                               PersonQueue nonAssignedPersonQueue,
                               PriceVector priceVector,
-                              int[][] costMatrix,
+                              BenefitMatrix benefitMatrix,
                               double epsilon) {
-        final int n = costMatrix.length;
+        final int n = benefitMatrix.size();
         final ItemList itemList = ItemList.createItemList(n);
         final int nonAssignedAmount = nonAssignedPersonQueue.size();
         final int taskAmount = nonAssignedAmount;
@@ -89,15 +91,13 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
         /* Bidding phase */
         for (Person person : nonAssignedPersonQueue) {
             Runnable findBidTask = () -> {
-                double bestValue = UNASSIGNED_DOUBLE;
-                double secondBestValue = UNASSIGNED_DOUBLE;
-
+                double bestValue = STARTING_VALUE;
+                double secondBestValue = STARTING_VALUE;
                 Item bestItem = Item.NO_ITEM;
                 for (Item item : itemList) {
-                    int cost = costMatrix[person.getPersonIndex()][item.getItemIndex()];
+                    int benefit = benefitMatrix.getBenefit(person, item);
                     double price = priceVector.getPriceFor(item);
-                    double value = cost - price;
-
+                    double value = benefit - price;
                     if (value > bestValue) {
                         secondBestValue = bestValue;
                         bestValue = value;
