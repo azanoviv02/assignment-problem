@@ -1,9 +1,9 @@
-package com.netcracker.algorithms.auction.auxillary.entities;
+package com.netcracker.algorithms.auction.auxillary.entities.results;
 
 import com.netcracker.algorithms.auction.auxillary.entities.aggregates.Assignment;
 import com.netcracker.algorithms.auction.auxillary.entities.aggregates.PriceVector;
 
-// todo think if it is really needed
+// todo make immutable
 public class RelaxationPhaseResult {
     final Assignment assignment;
     final PriceVector priceVector;

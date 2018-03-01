@@ -7,7 +7,7 @@ import com.netcracker.algorithms.auction.auxillary.entities.aggregates.ItemList;
 import com.netcracker.algorithms.auction.auxillary.entities.basic.Bid;
 import com.netcracker.algorithms.auction.auxillary.entities.aggregates.PersonQueue;
 import com.netcracker.algorithms.auction.auxillary.entities.aggregates.PriceVector;
-import com.netcracker.algorithms.auction.auxillary.entities.RelaxationPhaseResult;
+import com.netcracker.algorithms.auction.auxillary.entities.results.RelaxationPhaseResult;
 import com.netcracker.algorithms.auction.auxillary.entities.basic.Item;
 import com.netcracker.algorithms.auction.auxillary.entities.basic.Person;
 import com.netcracker.algorithms.auction.auxillary.logic.relaxation.EpsilonProducer;
@@ -59,9 +59,9 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
 
     //todo find correct name for this method
     private RelaxationPhaseResult relaxationPhase(BenefitMatrix benefitMatrix, RelaxationPhaseResult previousResult, double epsilon) {
+        final int n = benefitMatrix.size();
         PriceVector priceVector = previousResult.getPriceVector();
         logger.info("  Prices at the beginning of phase: %s", priceVector);
-        final int n = benefitMatrix.size();
         PersonQueue nonAssignedPersonQueue = PersonQueue.createInitialPersonQueue(n);
         final Assignment assignment = Assignment.createInitialAssignment(n);
         while (!nonAssignedPersonQueue.isEmpty()) {
@@ -88,31 +88,24 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
 
         logger.info("    Non assigned at the beginning of round: %s", nonAssignedPersonQueue);
         logger.info("    Assignment at the beginning of round: %s", assignment);
+
         /* Bidding phase */
+        /* Executed in parallel */
         for (Person person : nonAssignedPersonQueue) {
-            Runnable findBidTask = () -> {
-                double bestValue = STARTING_VALUE;
-                double secondBestValue = STARTING_VALUE;
-                Item bestItem = Item.NO_ITEM;
-                for (Item item : itemList) {
-                    int benefit = benefitMatrix.getBenefit(person, item);
-                    double price = priceVector.getPriceFor(item);
-                    double value = benefit - price;
-                    if (value > bestValue) {
-                        secondBestValue = bestValue;
-                        bestValue = value;
-                        bestItem = item;
-                    } else if (value > secondBestValue) {
-                        secondBestValue = value;
-                    }
-                }
 
-			    /* Computes the highest reasonable bid for the best item for this person */
-                double bidValue = bestValue - secondBestValue + epsilon;
-
-                bidSet.add(new Bid(person, bestItem, bidValue));
+            Runnable makeBidTask = () -> {
+                bidSet.add(
+                        createBid(
+                                person,
+                                itemList,
+                                benefitMatrix,
+                                priceVector,
+                                epsilon
+                        )
+                );
             };
-            taskList.add(findBidTask);
+
+            taskList.add(makeBidTask);
         }
 
         ExecutorService executorService = Executors.newFixedThreadPool(threadAmount);
@@ -130,19 +123,10 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
         executorService.shutdown();
 
         /* Processing bids */
-        Map<Item, Queue<Bid>> bidMap = new HashMap<>();
-        for (Item item : itemList) {
-            bidMap.put(item, new PriorityQueue<>(Collections.reverseOrder()));
-        }
-        for (Bid bid : bidSet) {
-            final Item item = bid.getItem();
-            final Queue<Bid> bidQueue = bidMap.get(item);
-            bidQueue.add(bid);
-        }
-
-        nonAssignedPersonQueue.clear();
+        Map<Item, Queue<Bid>> bidMap = processBids(bidSet, itemList);
 
         /* Assignment phase*/
+        nonAssignedPersonQueue.clear();
         for (Item item : itemList) {
             final Person oldOwner = assignment.getPersonForItem(item);
             logger.info("      Bids for item number %s", item);
@@ -170,10 +154,48 @@ public class SynchronousJacobiAlgorithm implements AssignmentProblemSolver {
         }
 
         if (nonAssignedPersonQueue.containsDuplicates()) {
-            throw new IllegalStateException("Queue contains duplicates: "+nonAssignedPersonQueue);
+            throw new IllegalStateException("Queue contains duplicates: " + nonAssignedPersonQueue);
         }
 
         logger.info("    Non assigned at the end: %s", nonAssignedPersonQueue);
         logger.info("    Assignment at the end of round: %s", assignment);
+    }
+
+    private Bid createBid(Person person,
+                          ItemList itemList,
+                          BenefitMatrix benefitMatrix,
+                          PriceVector priceVector,
+                          double epsilon) {
+        double bestValue = STARTING_VALUE;
+        double secondBestValue = STARTING_VALUE;
+        Item bestItem = Item.NO_ITEM;
+
+        for (Item item : itemList) {
+            int benefit = benefitMatrix.getBenefit(person, item);
+            double price = priceVector.getPriceFor(item);
+            double value = benefit - price;
+            if (value > bestValue) {
+                secondBestValue = bestValue;
+                bestValue = value;
+                bestItem = item;
+            } else if (value > secondBestValue) {
+                secondBestValue = value;
+            }
+        }
+        double bidValue = bestValue - secondBestValue + epsilon;
+        return new Bid(person, bestItem, bidValue);
+    }
+
+    private Map<Item, Queue<Bid>> processBids(Set<Bid> bidSet, ItemList itemList) {
+        Map<Item, Queue<Bid>> bidMap = new HashMap<>();
+        for (Item item : itemList) {
+            bidMap.put(item, new PriorityQueue<>(Collections.reverseOrder()));
+        }
+        for (Bid bid : bidSet) {
+            final Item item = bid.getItem();
+            final Queue<Bid> bidQueue = bidMap.get(item);
+            bidQueue.add(bid);
+        }
+        return bidMap;
     }
 }
