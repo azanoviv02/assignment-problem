@@ -2,7 +2,6 @@ package com.netcracker.benchmark;
 
 import com.netcracker.algorithms.AssignmentProblemSolver;
 import com.netcracker.algorithms.auction.AuctionAlgorithm;
-import com.netcracker.algorithms.auction.implementation.synchronous.SynchronousGaussSeidel;
 import com.netcracker.algorithms.auction.implementation.synchronous.SynchronousJacobi;
 import com.netcracker.utils.io.MatrixReader;
 import org.openjdk.jmh.Main;
@@ -14,6 +13,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * My initial attempts at using Java Benchmarking Harness.
+ * For now I have put it on hold.
+ */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 @State(Scope.Thread)
@@ -22,10 +25,7 @@ public class BasicBenchmark {
     private List<int[][]> inputMatrices = MatrixReader.readMatricesFromFile(getFileNames());
 
 //    AssignmentProblemSolver hungarian = new HungarianAlgorithm();
-//    AssignmentProblemSolver initialAuction = new AuctionAlgorithm();
-//    AssignmentProblemSolver refactoredAuction = new AuctionAlgorithm();
     AssignmentProblemSolver parallelAuction = new AuctionAlgorithm(new SynchronousJacobi(4, 4));
-    AssignmentProblemSolver nonParallelAuction = new AuctionAlgorithm(new SynchronousGaussSeidel(10, 10));
 
     @Setup
     public void init() {
@@ -35,7 +35,7 @@ public class BasicBenchmark {
 //    public List<int[]> hungarian() {
 //        List<int[]> solutions = new ArrayList<>();
 //        for(int[][] matrix : inputMatrices){
-//            solutions.add(hungarian.findMaxCostMatching(matrix));
+//            solutions.add(hungarian.findMaxCostAssignment(matrix));
 //        }
 //        return solutions;
 //    }
@@ -44,7 +44,7 @@ public class BasicBenchmark {
 //    public List<int[]> initialAuction() {
 //        List<int[]> solutions = new ArrayList<>();
 //        for(int[][] matrix : inputMatrices){
-//            solutions.add(initialAuction.findMaxCostMatching(matrix));
+//            solutions.add(initialAuction.findMaxCostAssignment(matrix));
 //        }
 //        return solutions;
 //    }
@@ -53,25 +53,16 @@ public class BasicBenchmark {
 //    public List<int[]> refactoredAuction() {
 //        List<int[]> solutions = new ArrayList<>();
 //        for(int[][] matrix : inputMatrices){
-//            solutions.add(refactoredAuction.findMaxCostMatching(matrix));
+//            solutions.add(refactoredAuction.findMaxCostAssignment(matrix));
 //        }
 //        return solutions;
 //    }
 
     @Benchmark
-    public List<int[]> nonParallelAuction() {
-        List<int[]> solutions = new ArrayList<>();
-        for(int[][] matrix : inputMatrices){
-            solutions.add(nonParallelAuction.findMaxCostMatching(matrix));
-        }
-        return solutions;
-    }
-
-    @Benchmark
     public List<int[]> parallelAuction() {
         List<int[]> solutions = new ArrayList<>();
         for(int[][] matrix : inputMatrices){
-            solutions.add(parallelAuction.findMaxCostMatching(matrix));
+            solutions.add(parallelAuction.findMaxCostAssignment(matrix));
         }
         return solutions;
     }

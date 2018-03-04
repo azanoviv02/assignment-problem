@@ -29,7 +29,7 @@ public class HungarianAlgorithm implements AssignmentProblemSolver {
     private int[] prev;
 
     @Override
-    public int[] findMaxCostMatching(int[][] costMatrix) {
+    public int[] findMaxCostAssignment(int[][] costMatrix) {
         initFields(costMatrix);
         augment();
         return xy;

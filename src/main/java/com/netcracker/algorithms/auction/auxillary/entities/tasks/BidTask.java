@@ -55,7 +55,7 @@ public class BidTask implements Callable<List<Bid>> {
     }
 
     @Override
-    public List<Bid> call() throws Exception {
+    public List<Bid> call() {
         List<Bid> bidList = new LinkedList<>();
         for (Person person : personCollection) {
             SearchTask searchTask = new SearchTask(

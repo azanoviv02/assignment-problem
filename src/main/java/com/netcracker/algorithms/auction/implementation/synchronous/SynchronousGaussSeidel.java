@@ -13,7 +13,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
-@SuppressWarnings("ALL")
+/**
+ * Provides parallel execution withing the bid.
+ * Several threads can be used to search for the best item for one person.
+ */
 public class SynchronousGaussSeidel extends AbstractSynchronousAuctionImplementation implements AuctionImplementation {
 
     private final int numberOfSearchTasksPerPerson;
@@ -28,11 +31,16 @@ public class SynchronousGaussSeidel extends AbstractSynchronousAuctionImplementa
     }
 
     @Override
-    public List<Bid> makeBids(BenefitMatrix benefitMatrix, PriceVector priceVector, double epsilon, PersonQueue nonAssignedPersonQueue, ItemList itemList, ExecutorService executorService) {
+    public List<Bid> makeBids(BenefitMatrix benefitMatrix,
+                              PriceVector priceVector,
+                              double epsilon,
+                              PersonQueue nonAssignedPersonQueue,
+                              ItemList itemList,
+                              ExecutorService executorService) {
         final List<Bid> bidList = new LinkedList<>();
         while (!nonAssignedPersonQueue.isEmpty()) {
             Person person = nonAssignedPersonQueue.remove();
-            ParallelBidTask bidTask = new ParallelBidTask(
+            ParallelBidTask parallelBidTask = new ParallelBidTask(
                     benefitMatrix,
                     priceVector,
                     person,
@@ -41,7 +49,7 @@ public class SynchronousGaussSeidel extends AbstractSynchronousAuctionImplementa
                     executorService,
                     numberOfSearchTasksPerPerson
             );
-            bidList.addAll(bidTask.call());
+            bidList.addAll(parallelBidTask.call());
         }
         return bidList;
     }

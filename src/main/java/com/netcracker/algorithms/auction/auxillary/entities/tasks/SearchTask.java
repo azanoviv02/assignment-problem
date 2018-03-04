@@ -16,7 +16,10 @@ public class SearchTask implements Callable<SearchTaskResult> {
     private final Person person;
     private final ItemList itemList;
 
-    public SearchTask(BenefitMatrix benefitMatrix, PriceVector priceVector, Person person, ItemList itemList) {
+    public SearchTask(BenefitMatrix benefitMatrix,
+                      PriceVector priceVector,
+                      Person person,
+                      ItemList itemList) {
         this.benefitMatrix = benefitMatrix;
         this.priceVector = priceVector;
         this.person = person;
@@ -40,7 +43,7 @@ public class SearchTask implements Callable<SearchTaskResult> {
     }
 
     @Override
-    public SearchTaskResult call() throws Exception {
+    public SearchTaskResult call() {
         Item currentBestItem = null;
         double currentBestValue = -1.0;
         double currentSecondBestValue = -1.0;

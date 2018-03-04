@@ -8,7 +8,7 @@ import java.util.List;
 
 public class ItemList implements Iterable<Item> {
 
-    public static ItemList createItemList(int numberOfItems) {
+    public static ItemList createFullItemList(int numberOfItems) {
         return new ItemList(getListOfRange(numberOfItems));
     }
 
@@ -41,16 +41,16 @@ public class ItemList implements Iterable<Item> {
         return itemList.iterator();
     }
 
+    @Override
+    public String toString() {
+        return itemList.toString();
+    }
+
     private static List<Item> getListOfRange(int toExclusive) {
         List<Item> rangeList = new ArrayList<>(toExclusive);
         for (int i = 0; i < toExclusive; i++) {
             rangeList.add(new Item(i));
         }
         return rangeList;
-    }
-
-    @Override
-    public String toString() {
-        return itemList.toString();
     }
 }

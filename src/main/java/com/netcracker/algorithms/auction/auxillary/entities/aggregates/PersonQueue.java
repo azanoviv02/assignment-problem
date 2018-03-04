@@ -2,26 +2,14 @@ package com.netcracker.algorithms.auction.auxillary.entities.aggregates;
 
 import com.netcracker.algorithms.auction.auxillary.entities.basic.Person;
 
-import java.util.ArrayDeque;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Queue;
-import java.util.Set;
-import java.util.Spliterator;
+import java.util.*;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
 
 public class PersonQueue implements Iterable<Person> {
 
     public static PersonQueue createFullPersonQueue(int n) {
         return new PersonQueue(getQueueOfRange(n));
     }
-
-    public static PersonQueue createEmptyPersonQueue() {
-        return new PersonQueue(new LinkedList());
-    }
-
 
     private final Queue<Person> personQueue;
 
@@ -33,20 +21,26 @@ public class PersonQueue implements Iterable<Person> {
         return personQueue.add(person);
     }
 
-    public boolean addAll(PersonQueue anotherPersonQueue) {
-        return personQueue.addAll(anotherPersonQueue.personQueue);
-    }
-
     public Person remove() {
         return personQueue.remove();
     }
 
-    public boolean isEmpty() {
-        return personQueue.isEmpty();
+    public List<Person> removeSeveral(int numberOfPersonsToRemove) {
+        final List<Person> removedPersonList = new ArrayList<>(numberOfPersonsToRemove);
+        int alreadyRemoved = 0;
+        while (alreadyRemoved < numberOfPersonsToRemove && !isEmpty()) {
+            final Person person = remove();
+            removedPersonList.add(person);
+        }
+        return removedPersonList;
     }
 
-    public int size() {
-        return personQueue.size();
+    public List<Person> removeAll(){
+        return removeSeveral(personQueue.size());
+    }
+
+    public boolean isEmpty() {
+        return personQueue.isEmpty();
     }
 
     public boolean containsDuplicates() {
@@ -57,19 +51,6 @@ public class PersonQueue implements Iterable<Person> {
     @Override
     public Iterator<Person> iterator() {
         return personQueue.iterator();
-    }
-
-    @Override
-    public Spliterator<Person> spliterator() {
-        return personQueue.spliterator();
-    }
-
-    public Stream<Person> stream() {
-        return personQueue.stream();
-    }
-
-    public Stream<Person> parallelStream() {
-        return personQueue.parallelStream();
     }
 
     @Override

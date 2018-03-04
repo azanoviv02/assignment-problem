@@ -17,9 +17,23 @@ import static com.netcracker.utils.io.logging.StaticLoggerHolder.info;
 
 /**
  * Synchronous implementation of the auction algorithm.
+ *
  * I created a common parent for all synchronous implementations because
- * they all share the concept of "auction round" (distinct phases within "relaxation phase"
+ * they all share the concept of "auction round" (distinct phases within "epsilonscaling phase"
  * which are marked by synchronization points).
+ *
+ * Even within this "auction round" all synchronous algorithms have the same actions except
+ * during making bids. Here each implementation has its own specifics:
+ *   - Single threaded implementation uses single bid task for all people
+ *   and only a single search task per person.
+ *   - Jacobi implementation has several bid tasks, which are executed in parallel. Within bid
+ *   task each person still has only one search task (i.e. parallel across the bids).
+ *   - Gauss-Seidel implementation has only one bid task for all people, but each person
+ *   has several search tasks (i.e. parallel within bid).
+ *   - Hybrid is parallel both within and across bids.
+ *
+ * All other stages (i.e. bid aggregation, bid processing, price and assignment updating) happen
+ * without any concurrency.
  */
 public abstract class AbstractSynchronousAuctionImplementation implements AuctionImplementation {
 
@@ -33,15 +47,14 @@ public abstract class AbstractSynchronousAuctionImplementation implements Auctio
         return numberOfThreads;
     }
 
-    //todo find correct name for this method
     @Override
-    public Assignment relaxationPhase(BenefitMatrix benefitMatrix,
-                                      PriceVector priceVector,
-                                      double epsilon) {
+    public Assignment epsilonScalingPhase(BenefitMatrix benefitMatrix,
+                                          PriceVector priceVector,
+                                          double epsilon) {
         final int n = benefitMatrix.size();
 
         final PersonQueue nonAssignedPersonQueue = PersonQueue.createFullPersonQueue(n);
-        final ItemList itemList = ItemList.createItemList(n);
+        final ItemList itemList = ItemList.createFullItemList(n);
         final Assignment assignment = Assignment.createInitialAssignment(n);
 
         final ExecutorService executorService = createExecutorService(numberOfThreads);
@@ -89,7 +102,7 @@ public abstract class AbstractSynchronousAuctionImplementation implements Auctio
         //==================== Bid processing =============================
 
         info("Aggregating bids: %s", bidList);
-        Map<Item, Queue<Bid>> bidMap = aggregateBids(bidList, itemList);
+        Map<Item, Queue<Bid>> bidMap = aggregateBids(bidList);
 
         //==================== Assignment ==================================
 

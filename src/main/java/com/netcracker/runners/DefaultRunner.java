@@ -2,14 +2,17 @@ package com.netcracker.runners;
 
 import com.netcracker.algorithms.AssignmentProblemSolver;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
-import static com.netcracker.utils.io.MatrixReader.readMatricesFromFile;
-import static com.netcracker.utils.io.ResultsPrinter.printResults;
+import static com.netcracker.utils.GeneralUtils.convertArrayToList;
+import static com.netcracker.utils.GeneralUtils.toLinkedMap;
 import static com.netcracker.utils.SolverSupplier.createSolverMap;
-import static com.netcracker.utils.Validator.assignmentsMatch;
+import static com.netcracker.utils.Validator.assignmentsAreSame;
 import static com.netcracker.utils.Validator.containsDuplicates;
+import static com.netcracker.utils.io.MatrixReader.readMatricesFromFile;
+import static com.netcracker.utils.io.ResultPrinter.printResults;
 
 public class DefaultRunner {
 
@@ -21,23 +24,42 @@ public class DefaultRunner {
         // Available assignment problem solvers
         Map<String, AssignmentProblemSolver> solverMap = createSolverMap();
 
-        // Solution for each cost matrix and each solver
-        Map<int[][], Map<String, List<Integer>>> allResults = new LinkedHashMap<>();
-        for (int[][] matrix : matrixList) {
-            Map<String, List<Integer>> resultsForMatrix = new LinkedHashMap<>();
-            for (Map.Entry<String, AssignmentProblemSolver> solverEntry : solverMap.entrySet()) {
-                String solverName = solverEntry.getKey();
-                AssignmentProblemSolver solver = solverEntry.getValue();
-                List<Integer> assignment = convertArrayToList(solver.findMaxCostMatching(matrix));
-                assert !containsDuplicates(assignment);
-                resultsForMatrix.put(solverName, assignment);
-            }
-            assert assignmentsMatch(resultsForMatrix);
-            allResults.put(matrix, resultsForMatrix);
-        }
+        // Find assignment for each cost matrix using each solver
+        Map<int[][], Map<String, List<Integer>>> allAssignments = findAssignmentForEveryMatrix(matrixList, solverMap);
 
         // Output
-        printResults(allResults);
+        printResults(allAssignments);
+    }
+
+    public static Map<int[][], Map<String, List<Integer>>> findAssignmentForEveryMatrix(List<int[][]> matrixList,
+                                                                                        Map<String, AssignmentProblemSolver> solverMap) {
+        return matrixList
+                .stream()
+                .collect(toLinkedMap(
+                        matrix -> matrix,
+                        matrix -> findAssignmentUsingMultipleSolvers(matrix, solverMap)
+                ));
+    }
+
+    public static Map<String, List<Integer>> findAssignmentUsingMultipleSolvers(int[][] matrix,
+                                                                                Map<String, AssignmentProblemSolver> solverMap) {
+        final Map<String, List<Integer>> assignmentsForMatrix = solverMap
+                .entrySet()
+                .stream()
+                .collect(toLinkedMap(
+                        Map.Entry::getKey,
+                        solverEntry -> findAssignmentUsingOneSolver(matrix, solverEntry.getValue())
+                ));
+        assert assignmentsAreSame(assignmentsForMatrix);
+        return assignmentsForMatrix;
+    }
+
+    public static List<Integer> findAssignmentUsingOneSolver(int[][] matrix,
+                                                             AssignmentProblemSolver solver) {
+        final int[] assignmentArray = solver.findMaxCostAssignment(matrix);
+        final List<Integer> assignmentList = convertArrayToList(assignmentArray);
+        assert !containsDuplicates(assignmentList);
+        return assignmentList;
     }
 
     public static List<String> getFileNames() {
@@ -51,10 +73,5 @@ public class DefaultRunner {
         return fileNames;
     }
 
-    public static List<Integer> convertArrayToList(int[] array) {
-        return Arrays
-                .stream(array)
-                .boxed()
-                .collect(Collectors.toList());
-    }
+
 }

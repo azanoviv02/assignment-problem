@@ -7,14 +7,20 @@ import com.netcracker.algorithms.auction.auxillary.entities.aggregates.PriceVect
 public interface AuctionImplementation {
 
     /**
+     * Distinct phase within the auction algorithm, which always produces complete
+     * if not optimal assignment.
      *
-     * @param benefitMatrix
-     * @param priceVector mutable PriceVector object, contains updated prices at the end
+     * This phase is going to be present in EVERY auction algorithm implementation, both
+     * synchronous and asynchronous.
+     *
+     * I separated it into distinct method in order to clearly define input and output.
+     *
+     * @param benefitMatrix immutable
+     * @param priceVector mutable, contains updated prices at the end
      * @param epsilon
-     * @return new assigment
+     * @return new COMPLETE assigment
      */
-    //todo find correct name for this method
-    Assignment relaxationPhase(BenefitMatrix benefitMatrix,
-                               PriceVector priceVector,
-                               double epsilon);
+    Assignment epsilonScalingPhase(BenefitMatrix benefitMatrix,
+                                   PriceVector priceVector,
+                                   double epsilon);
 }

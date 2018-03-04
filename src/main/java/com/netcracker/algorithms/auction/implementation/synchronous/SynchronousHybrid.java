@@ -13,16 +13,24 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
-import static com.netcracker.algorithms.auction.auxillary.utils.GeneralUtils.flatten;
 import static com.netcracker.algorithms.auction.auxillary.utils.ConcurrentUtils.executeCallableList;
-import static com.netcracker.algorithms.auction.implementation.synchronous.SynchronousJacobi.removePersonsFromQueue;
+import static com.netcracker.utils.GeneralUtils.flatten;
 
-@SuppressWarnings("ALL")
+/**
+ * Hybrid synchronous implementation.
+ * It creates several separate bid tasks, inside which several search tasks are created for each person.
+ * So we achieve parallel execution both across people and within each bid.
+ */
 public class SynchronousHybrid extends AbstractSynchronousAuctionImplementation implements AuctionImplementation {
 
     private final int numberOfPersonsPerBidTasks;
     private final int numberOfSearchTasksPerPerson;
 
+    /**
+     * @param numberOfThreads
+     * @param numberOfPersonsPerBidTasks
+     * @param numberOfSearchTasksPerPerson
+     */
     public SynchronousHybrid(int numberOfThreads,
                              int numberOfPersonsPerBidTasks,
                              int numberOfSearchTasksPerPerson) {
@@ -40,13 +48,15 @@ public class SynchronousHybrid extends AbstractSynchronousAuctionImplementation 
     }
 
     @Override
-    public List<Bid> makeBids(BenefitMatrix benefitMatrix, PriceVector priceVector, double epsilon, PersonQueue nonAssignedPersonQueue, ItemList itemList, ExecutorService executorService) {
+    public List<Bid> makeBids(BenefitMatrix benefitMatrix,
+                              PriceVector priceVector,
+                              double epsilon,
+                              PersonQueue nonAssignedPersonQueue,
+                              ItemList itemList,
+                              ExecutorService executorService) {
         final List<ParallelBidTask> bidTaskList = new LinkedList<>();
         while (!nonAssignedPersonQueue.isEmpty()) {
-            List<Person> personList = removePersonsFromQueue(
-                    nonAssignedPersonQueue,
-                    numberOfPersonsPerBidTasks
-            );
+            List<Person> personList = nonAssignedPersonQueue.removeSeveral(numberOfPersonsPerBidTasks);
             ParallelBidTask bidTask = new ParallelBidTask(
                     benefitMatrix,
                     priceVector,

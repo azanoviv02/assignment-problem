@@ -16,48 +16,50 @@ import static com.netcracker.utils.io.logging.StaticLoggerHolder.info;
 public class BidProcessor {
 
     public static void processBidsAndUpdateAssignmentForItemList(Assignment assignment,
-                                                                        PriceVector priceVector,
-                                                                        PersonQueue nonAssignedPersonQueue,
-                                                                        ItemList itemList,
-                                                                        Map<Item, Queue<Bid>> bidMap) {
-        info("New round");
+                                                                 PriceVector priceVector,
+                                                                 PersonQueue nonAssignedPersonQueue,
+                                                                 ItemList itemList,
+                                                                 Map<Item, Queue<Bid>> bidMap) {
         for (Item item : itemList) {
             final Queue<Bid> bidQueue = bidMap.get(item);
-            if (!bidQueue.isEmpty()) {
-                nonAssignedPersonQueue.addAll(processBidsAndUpdateAssignmentForItem(assignment, priceVector, item, bidQueue));
+            if (bidQueue != null && !bidQueue.isEmpty()) {
+                processBidsAndUpdateAssignmentForItem(
+                        assignment,
+                        priceVector,
+                        nonAssignedPersonQueue,
+                        item,
+                        bidQueue
+                );
             }
         }
-        if (nonAssignedPersonQueue.containsDuplicates()) {
-            throw new IllegalStateException("Queue contains duplicates");
-        }
+        assert nonAssignedPersonQueue.containsDuplicates();
     }
 
-    public static PersonQueue processBidsAndUpdateAssignmentForItem(Assignment assignment,
-                                                                    PriceVector priceVector,
-                                                                    Item item,
-                                                                    Queue<Bid> bidQueue) {
+    public static void processBidsAndUpdateAssignmentForItem(Assignment assignment,
+                                                             PriceVector priceVector,
+                                                             PersonQueue nonAssignedPersonQueue,
+                                                             Item item,
+                                                             Queue<Bid> bidQueue) {
         info("  Bidding for item: %s", item);
-        info("  Bidders: "+bidQueue);
-        final PersonQueue nonAssignedPersonQueue = PersonQueue.createEmptyPersonQueue();
+
         final Person oldOwner = assignment.getPersonForItem(item);
-        info("  Old owner: "+oldOwner);
+        info("    Old owner: %s", oldOwner);
         if (oldOwner != Person.NO_PERSON) {
             nonAssignedPersonQueue.add(oldOwner);
         }
+
+        info("    Bids: %s", bidQueue);
         final Bid highestBid = bidQueue.remove();
+        info("    Highest bid: %s", highestBid);
         final Person highestBidder = highestBid.getPerson();
-        info("  Highest bidder: "+highestBidder);
-        assignment.setPersonForItem(item, highestBidder);
         final double highestBidValue = highestBid.getBidValue();
+
+        assignment.setPersonForItem(item, highestBidder);
         priceVector.increasePrice(item, highestBidValue);
+
+        info("    Failed bids: %s", bidQueue);
         for (Bid failedBid : bidQueue) {
-            info("  Adding failed bidder: "+failedBid);
             nonAssignedPersonQueue.add(failedBid.getPerson());
         }
-        if (nonAssignedPersonQueue.containsDuplicates()) {
-            throw new IllegalStateException("Queue contains duplicates");
-        }
-        info("  == Bidding for item %s is over, failed bidders %s", item, nonAssignedPersonQueue);
-        return nonAssignedPersonQueue;
     }
 }

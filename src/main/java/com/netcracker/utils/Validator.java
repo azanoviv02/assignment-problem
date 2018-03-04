@@ -12,7 +12,7 @@ public class Validator {
         return set.size() != list.size();
     }
 
-    public static boolean assignmentsMatch(Map<String, List<Integer>> assignmentMap) {
+    public static boolean assignmentsAreSame(Map<String, List<Integer>> assignmentMap) {
         return assignmentMap.values().stream().distinct().limit(2).count() <= 1;
     }
 }

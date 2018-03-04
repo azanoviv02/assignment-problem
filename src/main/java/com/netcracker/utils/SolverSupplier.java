@@ -16,11 +16,10 @@ public class SolverSupplier {
     public static Map<String, AssignmentProblemSolver> createSolverMap() {
         Map<String, AssignmentProblemSolver> solverMap = new LinkedHashMap<>();
         solverMap.put("Hungarian", new HungarianAlgorithm());
-        for (Map.Entry<String, AuctionImplementation> entry : createAuctionImplementationMap().entrySet()) {
-            final String implementationName = entry.getKey();
-            final AuctionImplementation implementation = entry.getValue();
-            solverMap.put(implementationName, new AuctionAlgorithm(implementation));
-        }
+        createAuctionImplementationMap().forEach(
+                (name, implementation) ->
+                        solverMap.put(name, new AuctionAlgorithm(implementation))
+        );
         return solverMap;
     }
 
