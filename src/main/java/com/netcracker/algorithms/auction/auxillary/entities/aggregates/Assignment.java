@@ -11,7 +11,6 @@ public class Assignment {
         return new Assignment(getFilledPersonArray(n, Person.NO_PERSON));
     }
 
-
     private final Person[] assignmentArray;
 
     public Assignment(Person[] assignmentArray) {

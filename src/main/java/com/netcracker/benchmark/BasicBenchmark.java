@@ -1,8 +1,10 @@
 package com.netcracker.benchmark;
 
 import com.netcracker.algorithms.AssignmentProblemSolver;
-import com.netcracker.algorithms.auction.SynchronousJacobiAlgorithm;
-import com.netcracker.utils.MatrixReader;
+import com.netcracker.algorithms.auction.AuctionAlgorithm;
+import com.netcracker.algorithms.auction.implementation.synchronous.SynchronousGaussSeidel;
+import com.netcracker.algorithms.auction.implementation.synchronous.SynchronousJacobi;
+import com.netcracker.utils.io.MatrixReader;
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.RunnerException;
@@ -22,8 +24,8 @@ public class BasicBenchmark {
 //    AssignmentProblemSolver hungarian = new HungarianAlgorithm();
 //    AssignmentProblemSolver initialAuction = new AuctionAlgorithm();
 //    AssignmentProblemSolver refactoredAuction = new AuctionAlgorithm();
-    AssignmentProblemSolver parallelAuction = new SynchronousJacobiAlgorithm(4);
-    AssignmentProblemSolver nonParallelAuction = new SynchronousJacobiAlgorithm(10);
+    AssignmentProblemSolver parallelAuction = new AuctionAlgorithm(new SynchronousJacobi(4, 4));
+    AssignmentProblemSolver nonParallelAuction = new AuctionAlgorithm(new SynchronousGaussSeidel(10, 10));
 
     @Setup
     public void init() {

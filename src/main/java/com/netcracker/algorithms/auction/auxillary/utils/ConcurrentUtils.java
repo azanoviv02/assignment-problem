@@ -4,19 +4,14 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 public class ConcurrentUtils {
 
-    public static <T> List<T> executeCallableList(List<Callable<T>> callableList, int threadAmount) {
+    public static <T> List<T> executeCallableList(List<? extends Callable<T>> callableList, ExecutorService executorService) {
         try {
-            ExecutorService executorService = Executors.newFixedThreadPool(threadAmount);
-            List<Future<T>> futureList = executorService.invokeAll(callableList);
-            List<T> resultList = getResultList(futureList);
-            executorService.shutdown();
-            return resultList;
+            return getResultList(executorService.invokeAll(callableList));
         } catch (InterruptedException e) {
             throw new IllegalStateException(e);
         }

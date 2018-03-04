@@ -1,4 +1,4 @@
-package com.netcracker.utils.logging;
+package com.netcracker.utils.io.logging;
 
 public class SystemOutLogger implements Logger {
 

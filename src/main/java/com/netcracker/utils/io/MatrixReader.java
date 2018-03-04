@@ -1,4 +1,4 @@
-package com.netcracker.utils;
+package com.netcracker.utils.io;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
