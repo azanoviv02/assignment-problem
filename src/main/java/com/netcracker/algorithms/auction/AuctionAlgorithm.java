@@ -43,8 +43,7 @@ public class AuctionAlgorithm implements AssignmentProblemSolver {
         info("Solving problem for size: %d", n);
 
         final PriceVector priceVector = PriceVector.createInitialPriceVector(n);
-        final List<Double> epsilonSequence = epsilonProducer.getEpsilonSequence(n)
-                ;
+        final List<Double> epsilonSequence = epsilonProducer.getEpsilonSequence(n);
         Assignment assignment = null;
         for(Double epsilon : epsilonSequence){
             assignment = implementation.epsilonScalingPhase(benefitMatrix, priceVector, epsilon);
