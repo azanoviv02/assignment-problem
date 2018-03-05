@@ -10,6 +10,7 @@ import com.netcracker.algorithms.auction.implementation.AuctionImplementation;
 
 import java.util.List;
 
+import static com.netcracker.utils.AssertionMaker.makeAssertion;
 import static com.netcracker.utils.io.logging.StaticLoggerHolder.info;
 
 /**
@@ -49,7 +50,7 @@ public class AuctionAlgorithm implements AssignmentProblemSolver {
             assignment = implementation.epsilonScalingPhase(benefitMatrix, priceVector, epsilon);
         }
 
-        assert assignment.isComplete();
+        makeAssertion(assignment.isComplete());
 
         return assignment.getPersonAssignment();
     }

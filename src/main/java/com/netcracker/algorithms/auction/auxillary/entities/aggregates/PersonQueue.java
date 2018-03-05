@@ -25,6 +25,10 @@ public class PersonQueue implements Iterable<Person> {
         return personQueue.remove();
     }
 
+    public Person poll() {
+        return personQueue.poll();
+    }
+
     public List<Person> removeSeveral(int numberOfPersonsToRemove) {
         final List<Person> removedPersonList = new ArrayList<>(numberOfPersonsToRemove);
         int alreadyRemoved = 0;

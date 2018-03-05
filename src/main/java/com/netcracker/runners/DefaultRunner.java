@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static com.netcracker.utils.AssertionMaker.makeAssertion;
 import static com.netcracker.utils.GeneralUtils.convertArrayToList;
 import static com.netcracker.utils.GeneralUtils.toLinkedMap;
 import static com.netcracker.utils.SolverSupplier.createSolverMap;
@@ -50,7 +51,7 @@ public class DefaultRunner {
                         Map.Entry::getKey,
                         solverEntry -> findAssignmentUsingOneSolver(matrix, solverEntry.getValue())
                 ));
-        assert assignmentsAreSame(assignmentsForMatrix);
+        makeAssertion(assignmentsAreSame(assignmentsForMatrix));
         return assignmentsForMatrix;
     }
 
@@ -58,7 +59,7 @@ public class DefaultRunner {
                                                              AssignmentProblemSolver solver) {
         final int[] assignmentArray = solver.findMaxCostAssignment(matrix);
         final List<Integer> assignmentList = convertArrayToList(assignmentArray);
-        assert !containsDuplicates(assignmentList);
+        makeAssertion(!containsDuplicates(assignmentList));
         return assignmentList;
     }
 
@@ -66,9 +67,9 @@ public class DefaultRunner {
         List<String> fileNames = new ArrayList<>();
 
         fileNames.add("/matrices/util10.txt");
-        fileNames.add("/matrices/util20.txt");
-        fileNames.add("/matrices/util40.txt");
-        fileNames.add("/matrices/util60.txt");
+//        fileNames.add("/matrices/util20.txt");
+//        fileNames.add("/matrices/util40.txt");
+//        fileNames.add("/matrices/util60.txt");
 
         return fileNames;
     }

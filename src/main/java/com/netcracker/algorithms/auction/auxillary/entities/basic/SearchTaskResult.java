@@ -1,6 +1,6 @@
 package com.netcracker.algorithms.auction.auxillary.entities.basic;
 
-import java.util.List;
+import java.util.Collection;
 
 public class SearchTaskResult {
 
@@ -35,7 +35,7 @@ public class SearchTaskResult {
                 '}';
     }
 
-    public static SearchTaskResult mergeResults(List<SearchTaskResult> resultList) {
+    public static SearchTaskResult mergeResults(Collection<SearchTaskResult> resultList) {
         if (resultList.isEmpty()) {
             throw new IllegalStateException("searchTaskResultList is empty");
         }

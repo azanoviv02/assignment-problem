@@ -13,25 +13,26 @@ import java.util.concurrent.Executors;
 
 import static com.netcracker.algorithms.auction.auxillary.logic.bids.BidAggregator.aggregateBids;
 import static com.netcracker.algorithms.auction.auxillary.logic.bids.BidProcessor.processBidsAndUpdateAssignmentForItemList;
+import static com.netcracker.utils.AssertionMaker.makeAssertion;
 import static com.netcracker.utils.io.logging.StaticLoggerHolder.info;
 
 /**
  * Synchronous implementation of the auction algorithm.
- *
+ * <p>
  * I created a common parent for all synchronous implementations because
  * they all share the concept of "auction round" (distinct phases within "epsilonscaling phase"
  * which are marked by synchronization points).
- *
+ * <p>
  * Even within this "auction round" all synchronous algorithms have the same actions except
  * during making bids. Here each implementation has its own specifics:
- *   - Single threaded implementation uses single bid task for all people
- *   and only a single search task per person.
- *   - Jacobi implementation has several bid tasks, which are executed in parallel. Within bid
- *   task each person still has only one search task (i.e. parallel across the bids).
- *   - Gauss-Seidel implementation has only one bid task for all people, but each person
- *   has several search tasks (i.e. parallel within bid).
- *   - Hybrid is parallel both within and across bids.
- *
+ * - Single threaded implementation uses single bid task for all people
+ * and only a single search task per person.
+ * - Jacobi implementation has several bid tasks, which are executed in parallel. Within bid
+ * task each person still has only one search task (i.e. parallel across the bids).
+ * - Gauss-Seidel implementation has only one bid task for all people, but each person
+ * has several search tasks (i.e. parallel within bid).
+ * - Hybrid is parallel both within and across bids.
+ * <p>
  * All other stages (i.e. bid aggregation, bid processing, price and assignment updating) happen
  * without any concurrency.
  */
@@ -68,7 +69,7 @@ public abstract class AbstractSynchronousAuctionImplementation implements Auctio
                     assignment,
                     executorService
             );
-            assert !nonAssignedPersonQueue.containsDuplicates();
+            makeAssertion(!nonAssignedPersonQueue.containsDuplicates());
             info("    Non assigned at the end: %s", nonAssignedPersonQueue);
             info("    Assignment at the end of round: %s", assignment);
         }
