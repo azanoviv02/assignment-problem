@@ -14,6 +14,7 @@ import static com.netcracker.utils.Validator.assignmentsAreSame;
 import static com.netcracker.utils.Validator.containsDuplicates;
 import static com.netcracker.utils.io.MatrixReader.readMatricesFromFile;
 import static com.netcracker.utils.io.ResultPrinter.printResults;
+import static java.lang.Thread.sleep;
 
 public class DefaultRunner {
 
@@ -27,6 +28,9 @@ public class DefaultRunner {
 
         // Find assignment for each cost matrix using each solver
         Map<int[][], Map<String, List<Integer>>> allAssignments = findAssignmentForEveryMatrix(matrixList, solverMap);
+
+        // Make pause in order to clearly separate execution output and result output
+        makePause(2000);
 
         // Output
         printResults(allAssignments);
@@ -74,5 +78,11 @@ public class DefaultRunner {
         return fileNames;
     }
 
-
+    private static void makePause(int duration) {
+        try {
+            sleep(duration);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
 }

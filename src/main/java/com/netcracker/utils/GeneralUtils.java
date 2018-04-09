@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Future;
 import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
@@ -28,9 +29,16 @@ public class GeneralUtils {
             Function<? super T, ? extends K> keyMapper,
             Function<? super T, ? extends U> valueMapper) {
         return Collectors.toMap(keyMapper, valueMapper,
-                (u, v) -> {
-                    throw new IllegalStateException(String.format("Duplicate key %s", u));
-                },
-                LinkedHashMap::new);
+                                (u, v) -> {
+                                    throw new IllegalStateException(String.format("Duplicate key %s", u));
+                                },
+                                LinkedHashMap::new);
+    }
+
+    public static <T, S> List<S> mapList(List<T> originalList, Function<T, S> mappingFunction) {
+        return originalList
+                .stream()
+                .map(mappingFunction)
+                .collect(Collectors.toList());
     }
 }

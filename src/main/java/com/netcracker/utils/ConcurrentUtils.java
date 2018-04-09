@@ -1,4 +1,4 @@
-package com.netcracker.algorithms.auction.auxillary.utils;
+package com.netcracker.utils;
 
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -30,5 +30,21 @@ public class ConcurrentUtils {
         } catch (InterruptedException | ExecutionException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    public static void awaitFutureCompletion(Future future) {
+        try {
+            future.get();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void awaitFurureListCompletion(List<Future> futureList) {
+        futureList.forEach(future -> {
+            awaitFutureCompletion(future);
+        });
     }
 }

@@ -6,7 +6,7 @@ import com.netcracker.algorithms.auction.auxillary.entities.aggregates.PriceVect
 import com.netcracker.algorithms.auction.auxillary.entities.basic.Bid;
 import com.netcracker.algorithms.auction.auxillary.entities.basic.Person;
 import com.netcracker.algorithms.auction.auxillary.entities.basic.SearchTaskResult;
-import com.netcracker.algorithms.auction.auxillary.utils.ConcurrentUtils;
+import com.netcracker.utils.ConcurrentUtils;
 
 import java.util.ArrayList;
 import java.util.Collection;

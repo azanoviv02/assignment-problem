@@ -35,22 +35,22 @@ public class SolverSupplier {
                 )
         );
 
-        auctionImplementationMap.put(
-                "SynchronousGaussSeidel",
-                new SynchronousGaussSeidel(
-                        4,
-                        4
-                )
-        );
-
-        auctionImplementationMap.put(
-                "SynchronousHybrid",
-                new SynchronousHybrid(
-                        4,
-                        2,
-                        2
-                )
-        );
+//        auctionImplementationMap.put(
+//                "SynchronousGaussSeidel",
+//                new SynchronousGaussSeidel(
+//                        4,
+//                        4
+//                )
+//        );
+//
+//        auctionImplementationMap.put(
+//                "SynchronousHybrid",
+//                new SynchronousHybrid(
+//                        4,
+//                        2,
+//                        2
+//                )
+//        );
 
         auctionImplementationMap.put(
                 "TrueSynchronousGaussSeidel",
