@@ -1,7 +1,10 @@
 package com.netcracker.algorithms.auction.auxillary.utils;
 
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 public class ConcurrentUtils {
@@ -25,18 +28,6 @@ public class ConcurrentUtils {
         try {
             return future.get();
         } catch (InterruptedException | ExecutionException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    public static ExecutorService createExecutorService(int numberOfThreads) {
-        return Executors.newFixedThreadPool(numberOfThreads);
-    }
-
-    public static void await(CyclicBarrier barrier) {
-        try {
-            barrier.await();
-        } catch (InterruptedException | BrokenBarrierException e) {
             throw new IllegalStateException(e);
         }
     }

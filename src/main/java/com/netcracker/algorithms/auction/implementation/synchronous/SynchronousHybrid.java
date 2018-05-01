@@ -13,7 +13,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
-import static com.netcracker.algorithms.auction.auxillary.utils.ConcurrentUtils.executeCallableList;
+import static com.netcracker.utils.ConcurrentUtils.executeCallableList;
 import static com.netcracker.utils.GeneralUtils.flatten;
 
 /**
