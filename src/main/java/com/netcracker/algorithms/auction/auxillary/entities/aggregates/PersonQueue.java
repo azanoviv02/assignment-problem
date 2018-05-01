@@ -8,7 +8,11 @@ import java.util.function.Consumer;
 public class PersonQueue implements Iterable<Person> {
 
     public static PersonQueue createFullPersonQueue(int n) {
-        return new PersonQueue(getQueueOfRange(n));
+        return new PersonQueue(getQueueOfRange(n, new ArrayDeque<>(n)));
+    }
+
+    public static PersonQueue createFullPersonQueue(int n, Queue<Person> implementation) {
+        return new PersonQueue(getQueueOfRange(n, implementation));
     }
 
     private final Queue<Person> personQueue;
@@ -39,7 +43,7 @@ public class PersonQueue implements Iterable<Person> {
         return removedPersonList;
     }
 
-    public List<Person> removeAll(){
+    public List<Person> removeAll() {
         return removeSeveral(personQueue.size());
     }
 
@@ -67,11 +71,10 @@ public class PersonQueue implements Iterable<Person> {
         return personQueue.toString();
     }
 
-    private static Queue<Person> getQueueOfRange(int toExclusive) {
-        Queue<Person> rangeQueue = new ArrayDeque<>(toExclusive);
+    private static Queue<Person> getQueueOfRange(int toExclusive, Queue<Person> implementation) {
         for (int i = 0; i < toExclusive; i++) {
-            rangeQueue.add(new Person(i));
+            implementation.add(new Person(i));
         }
-        return rangeQueue;
+        return implementation;
     }
 }

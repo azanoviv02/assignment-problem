@@ -18,6 +18,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static com.netcracker.algorithms.auction.auxillary.logic.bids.BidMaker.makeBid;
+import static com.netcracker.algorithms.auction.auxillary.utils.ConcurrentUtils.await;
+import static com.netcracker.algorithms.auction.auxillary.utils.ConcurrentUtils.createExecutorService;
 import static com.netcracker.utils.AssertionMaker.makeAssertion;
 
 @SuppressWarnings("All")
@@ -137,17 +139,5 @@ public class TrueSynchronousGaussSeidel implements AuctionImplementation {
         makeAssertion(nonAssignedPersonQueue.isEmpty());
 
         return assignment;
-    }
-
-    private static ExecutorService createExecutorService(int numberOfThreads) {
-        return Executors.newFixedThreadPool(numberOfThreads);
-    }
-
-    private static void await(CyclicBarrier barrier) {
-        try {
-            barrier.await();
-        } catch (InterruptedException | BrokenBarrierException e) {
-            throw new IllegalStateException(e);
-        }
     }
 }

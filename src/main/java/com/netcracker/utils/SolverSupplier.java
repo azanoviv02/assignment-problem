@@ -52,12 +52,12 @@ public class SolverSupplier {
                 )
         );
 
-        auctionImplementationMap.put(
-                "TrueSynchronousGaussSeidel",
-                new TrueSynchronousGaussSeidel(
-                        4
-                )
-        );
+//        auctionImplementationMap.put(
+//                "TrueSynchronousGaussSeidel",
+//                new TrueSynchronousGaussSeidel(
+//                        4
+//                )
+//        );
 
         return auctionImplementationMap;
     }
